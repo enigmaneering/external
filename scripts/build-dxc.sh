@@ -60,6 +60,10 @@ if [ ! -f "external/SPIRV-Headers/README.md" ]; then
     git submodule update --init --recursive
 fi
 
+# Patch CMakeLists.txt to remove old CMake policy that newer CMake rejects
+echo "Patching CMakeLists.txt for newer CMake compatibility..."
+sed -i.bak '/cmake_policy(SET CMP0051 OLD)/d' CMakeLists.txt
+
 # Build DXC
 mkdir -p build
 cd build
@@ -91,14 +95,15 @@ if [[ "$OSTYPE" == "linux-gnu"* ]] && [ -n "$CMAKE_ARCH" ] && [ "$CMAKE_ARCH" = 
 fi
 
 echo "Configuring DXC..."
+# Use cache file first, then override with our flags
 cmake .. \
+    -C ../cmake/caches/PredefinedParams.cmake \
     $CMAKE_ARCH_FLAG \
     $CMAKE_OSX_ARCH_FLAG \
     $CMAKE_SYSTEM_PROCESSOR \
     $CMAKE_C_COMPILER \
     $CMAKE_CXX_COMPILER \
     -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
     -DBUILD_SHARED_LIBS=OFF \
     -DENABLE_SPIRV_CODEGEN=ON \
     -DSPIRV_BUILD_TESTS=OFF \
@@ -108,8 +113,7 @@ cmake .. \
     -DLLVM_INCLUDE_EXAMPLES=OFF \
     -DLLVM_TARGETS_TO_BUILD="" \
     -DHLSL_ENABLE_ANALYZE=OFF \
-    -DHLSL_BUILD_DXILCONV=OFF \
-    -C ../cmake/caches/PredefinedParams.cmake
+    -DHLSL_BUILD_DXILCONV=OFF
 
 echo "Building DXC (this may take 10-20 minutes)..."
 cmake --build . --config Release --target dxc -j$NCPU
