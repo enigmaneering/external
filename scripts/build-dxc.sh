@@ -98,14 +98,17 @@ cmake .. \
     $CMAKE_C_COMPILER \
     $CMAKE_CXX_COMPILER \
     -DCMAKE_BUILD_TYPE=Release \
-    -DLLVM_TARGETS_TO_BUILD="host" \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DENABLE_SPIRV_CODEGEN=ON \
+    -DSPIRV_BUILD_TESTS=OFF \
+    -DCLANG_ENABLE_ARCMT=OFF \
+    -DCLANG_ENABLE_STATIC_ANALYZER=OFF \
     -DLLVM_INCLUDE_TESTS=OFF \
     -DLLVM_INCLUDE_EXAMPLES=OFF \
-    -DLLVM_BUILD_TOOLS=OFF \
-    -DCLANG_BUILD_TOOLS=OFF \
-    -DLLVM_BUILD_UTILS=OFF \
-    -DENABLE_SPIRV_CODEGEN=ON \
-    -DSPIRV_BUILD_TESTS=OFF
+    -DLLVM_TARGETS_TO_BUILD="" \
+    -DHLSL_ENABLE_ANALYZE=OFF \
+    -DHLSL_BUILD_DXILCONV=OFF \
+    -C ../cmake/caches/PredefinedParams.cmake
 
 echo "Building DXC (this may take 10-20 minutes)..."
 cmake --build . --config Release --target dxc -j$NCPU

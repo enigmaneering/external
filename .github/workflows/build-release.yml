@@ -108,8 +108,8 @@ jobs:
           name: spirv-cross-${{ matrix.platform }}
           path: ${{ runner.temp }}/output/spirv-cross-${{ matrix.platform }}.*
 
-  build-dxc-macos:
-    name: Build DXC (macOS)
+  build-dxc:
+    name: Build DXC
     strategy:
       fail-fast: true
       matrix:
@@ -122,9 +122,20 @@ jobs:
             runner: macos-14  # Cross-compile x86_64 on ARM64
             platform: darwin-amd64
             macos_arch: x86_64
+          - os: ubuntu-latest
+            runner: ubuntu-24.04-arm
+            platform: linux-arm64
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install older GCC for DXC compatibility (Linux ARM64)
+        if: matrix.platform == 'linux-arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-11 g++-11
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 100
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 100
 
       - name: Build DXC
         shell: bash
@@ -246,7 +257,7 @@ jobs:
 
   create-release:
     name: Create Release
-    needs: [build-glslang, build-spirv-cross, build-dxc-macos, download-dxc-linux, download-dxc-windows]
+    needs: [build-glslang, build-spirv-cross, build-dxc, download-dxc-linux, download-dxc-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
