@@ -50,6 +50,9 @@ cd build
 # Set up architecture for cross-compilation
 CMAKE_ARCH_FLAG=""
 CMAKE_OSX_ARCH_FLAG=""
+CMAKE_SYSTEM_PROCESSOR=""
+CMAKE_C_COMPILER=""
+CMAKE_CXX_COMPILER=""
 
 # Windows cross-compilation
 if [ -n "$CMAKE_ARCH" ]; then
@@ -61,9 +64,19 @@ if [ -n "$MACOS_ARCH" ]; then
     CMAKE_OSX_ARCH_FLAG="-DCMAKE_OSX_ARCHITECTURES=$MACOS_ARCH"
 fi
 
+# Linux cross-compilation for ARM64
+if [ -n "$CMAKE_ARCH" ] && [ "$CMAKE_ARCH" = "aarch64" ]; then
+    CMAKE_SYSTEM_PROCESSOR="-DCMAKE_SYSTEM_PROCESSOR=aarch64"
+    CMAKE_C_COMPILER="-DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc"
+    CMAKE_CXX_COMPILER="-DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++"
+fi
+
 cmake .. \
     $CMAKE_ARCH_FLAG \
     $CMAKE_OSX_ARCH_FLAG \
+    $CMAKE_SYSTEM_PROCESSOR \
+    $CMAKE_C_COMPILER \
+    $CMAKE_CXX_COMPILER \
     -DCMAKE_BUILD_TYPE=Release \
     -DSPIRV_CROSS_SHARED=OFF \
     -DSPIRV_CROSS_STATIC=ON \

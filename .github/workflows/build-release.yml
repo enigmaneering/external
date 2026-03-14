@@ -28,6 +28,10 @@ jobs:
           - os: ubuntu-latest
             runner: ubuntu-latest
             platform: linux-amd64
+          - os: ubuntu-latest
+            runner: ubuntu-latest
+            platform: linux-arm64
+            cmake_arch: aarch64
           - os: windows-latest
             runner: windows-latest
             platform: windows-amd64
@@ -40,13 +44,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install ARM64 cross-compilation tools (Linux)
+        if: matrix.platform == 'linux-arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
       - name: Build glslang
         shell: bash
         run: |
           chmod +x scripts/build-glslang.sh
           BUILD_DIR="${{ runner.temp }}/build" \
           OUTPUT_DIR="${{ runner.temp }}/output" \
-          CMAKE_ARCH="${{ matrix.arch || '' }}" \
+          CMAKE_ARCH="${{ matrix.cmake_arch || matrix.arch || '' }}" \
           MACOS_ARCH="${{ matrix.macos_arch || '' }}" \
           bash scripts/build-glslang.sh
 
@@ -72,6 +82,10 @@ jobs:
           - os: ubuntu-latest
             runner: ubuntu-latest
             platform: linux-amd64
+          - os: ubuntu-latest
+            runner: ubuntu-latest
+            platform: linux-arm64
+            cmake_arch: aarch64
           - os: windows-latest
             runner: windows-latest
             platform: windows-amd64
@@ -84,13 +98,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install ARM64 cross-compilation tools (Linux)
+        if: matrix.platform == 'linux-arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
       - name: Build SPIRV-Cross
         shell: bash
         run: |
           chmod +x scripts/build-spirv-cross.sh
           BUILD_DIR="${{ runner.temp }}/build" \
           OUTPUT_DIR="${{ runner.temp }}/output" \
-          CMAKE_ARCH="${{ matrix.arch || '' }}" \
+          CMAKE_ARCH="${{ matrix.cmake_arch || matrix.arch || '' }}" \
           MACOS_ARCH="${{ matrix.macos_arch || '' }}" \
           bash scripts/build-spirv-cross.sh
 
@@ -116,9 +136,19 @@ jobs:
           - os: ubuntu-latest
             runner: ubuntu-latest
             platform: linux-amd64
+          - os: ubuntu-latest
+            runner: ubuntu-latest
+            platform: linux-arm64
+            cmake_arch: aarch64
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install ARM64 cross-compilation tools (Linux)
+        if: matrix.platform == 'linux-arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
       - name: Build DXC
         shell: bash
@@ -126,6 +156,7 @@ jobs:
           chmod +x scripts/build-dxc.sh
           BUILD_DIR="${{ runner.temp }}/build" \
           OUTPUT_DIR="${{ runner.temp }}/output" \
+          CMAKE_ARCH="${{ matrix.cmake_arch || '' }}" \
           MACOS_ARCH="${{ matrix.macos_arch || '' }}" \
           bash scripts/build-dxc.sh
 
