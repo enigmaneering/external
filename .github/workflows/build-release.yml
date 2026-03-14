@@ -1,0 +1,178 @@
+name: Build and Release Vendor Tools
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+jobs:
+  build-glslang:
+    name: Build glslang
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            runner: macos-14  # ARM64
+            platform: darwin-arm64
+          - os: macos-latest
+            runner: macos-13  # x86_64
+            platform: darwin-amd64
+          - os: ubuntu-latest
+            runner: ubuntu-latest
+            platform: linux-amd64
+          - os: windows-latest
+            runner: windows-latest
+            platform: windows-amd64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build glslang
+        shell: bash
+        run: |
+          chmod +x scripts/build-glslang.sh
+          BUILD_DIR="${{ runner.temp }}/build" \
+          OUTPUT_DIR="${{ runner.temp }}/output" \
+          bash scripts/build-glslang.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: glslang-${{ matrix.platform }}
+          path: ${{ runner.temp }}/output/glslang-${{ matrix.platform }}.*
+
+  build-spirv-cross:
+    name: Build SPIRV-Cross
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            runner: macos-14  # ARM64
+            platform: darwin-arm64
+          - os: macos-latest
+            runner: macos-13  # x86_64
+            platform: darwin-amd64
+          - os: ubuntu-latest
+            runner: ubuntu-latest
+            platform: linux-amd64
+          - os: windows-latest
+            runner: windows-latest
+            platform: windows-amd64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build SPIRV-Cross
+        shell: bash
+        run: |
+          chmod +x scripts/build-spirv-cross.sh
+          BUILD_DIR="${{ runner.temp }}/build" \
+          OUTPUT_DIR="${{ runner.temp }}/output" \
+          bash scripts/build-spirv-cross.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: spirv-cross-${{ matrix.platform }}
+          path: ${{ runner.temp }}/output/spirv-cross-${{ matrix.platform }}.*
+
+  build-dxc:
+    name: Build DXC
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            runner: macos-14  # ARM64
+            platform: darwin-arm64
+          - os: macos-latest
+            runner: macos-13  # x86_64
+            platform: darwin-amd64
+          - os: ubuntu-latest
+            runner: ubuntu-latest
+            platform: linux-amd64
+          - os: windows-latest
+            runner: windows-latest
+            platform: windows-amd64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build DXC
+        shell: bash
+        run: |
+          chmod +x scripts/build-dxc.sh
+          BUILD_DIR="${{ runner.temp }}/build" \
+          OUTPUT_DIR="${{ runner.temp }}/output" \
+          bash scripts/build-dxc.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dxc-${{ matrix.platform }}
+          path: ${{ runner.temp }}/output/dxc-${{ matrix.platform }}.*
+
+  create-release:
+    name: Create Release
+    needs: [build-glslang, build-spirv-cross, build-dxc]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display artifact structure
+        run: ls -R artifacts
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Release ${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/**/*.tar.gz
+            artifacts/**/*.zip
+          body: |
+            # Vendor Tools Release ${{ steps.version.outputs.version }}
+
+            Pre-built shader compilation toolchain for all platforms.
+
+            ## Included Tools
+
+            - **glslang** - GLSL to SPIRV compiler with optimizer
+            - **SPIRV-Cross** - SPIRV transpiler (GLSL/HLSL/MSL)
+            - **DXC** - DirectX Shader Compiler (HLSL to SPIRV/DXIL)
+
+            ## Supported Platforms
+
+            - macOS ARM64 (Apple Silicon)
+            - macOS x86_64 (Intel)
+            - Linux x86_64
+            - Windows x86_64
+
+            ## Usage
+
+            Download the appropriate archives for your platform and extract to your project's `external/` directory.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
