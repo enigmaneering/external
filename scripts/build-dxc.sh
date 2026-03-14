@@ -97,7 +97,8 @@ cmake .. \
     -DLLVM_ENABLE_RTTI=ON \
     -DHLSL_ENABLE_ANALYZE=OFF \
     -DHLSL_ENABLE_FIXED_VER=ON \
-    -DHLSL_BUILD_DXILCONV=OFF
+    -DHLSL_BUILD_DXILCONV=OFF \
+    -DCLANG_INCLUDE_TESTS=OFF
 
 echo "Building DXC (this may take 10-20 minutes)..."
 cmake --build . --config Release --target dxc -j$NCPU
