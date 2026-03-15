@@ -262,28 +262,45 @@ jobs:
           path: ${{ runner.temp }}/output/dxc-${{ matrix.platform }}.*
 
   download-dxc-prebuilt:
-    name: Download DXC (Prebuilt from NuGet)
+    name: Download DXC (Prebuilt)
     strategy:
       fail-fast: true
       matrix:
         include:
           - platform: linux-amd64
             os: ubuntu-latest
-            nuget_arch: x64
-            archive_ext: tar.gz
+            source: github
+            filename: linux_dxc_2024_07_31.x86_64.tar.gz
           - platform: windows-amd64
             os: windows-latest
+            source: nuget
             nuget_arch: x64
-            archive_ext: zip
           - platform: windows-arm64
             os: windows-latest
+            source: nuget
             nuget_arch: arm64
-            archive_ext: zip
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download DXC from NuGet
+      - name: Download DXC from GitHub (Linux)
+        if: matrix.source == 'github'
+        run: |
+          DOWNLOAD_URL="https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2407/${{ matrix.filename }}"
+          echo "Downloading DXC for ${{ matrix.platform }} from GitHub"
+
+          curl -L -o dxc.tar.gz "$DOWNLOAD_URL"
+
+          # Extract and repackage
+          mkdir -p output/dxc-${{ matrix.platform }}
+          tar -xzf dxc.tar.gz -C output/dxc-${{ matrix.platform }}
+
+          # Create archive
+          cd output
+          tar -czf dxc-${{ matrix.platform }}.tar.gz dxc-${{ matrix.platform }}
+
+      - name: Download DXC from NuGet (Windows)
+        if: matrix.source == 'nuget'
         shell: pwsh
         run: |
           $version = "1.9.2602.17"
@@ -300,55 +317,23 @@ jobs:
           # NuGet packages are zip files
           Expand-Archive -Path "dxc.nupkg" -DestinationPath "nuget-extract"
 
-          # Debug: Show package structure
-          Write-Host "Package structure:"
-          Get-ChildItem -Path "nuget-extract/bin" -Recurse | Select-Object FullName
-
           # Create output directory
           New-Item -ItemType Directory -Force -Path "output/dxc-$platform"
 
-          # Determine which binaries to copy based on platform
-          if ($platform -like "windows-*") {
-              # Windows: bin/{arch}/*
-              Copy-Item -Path "nuget-extract/bin/$arch/*" -Destination "output/dxc-$platform/" -Recurse
-          } else {
-              # Linux: Try different possible paths
-              $linuxPaths = @(
-                  "nuget-extract/bin/linux_$arch",
-                  "nuget-extract/bin/$arch/linux",
-                  "nuget-extract/bin/linux/$arch",
-                  "nuget-extract/bin/$arch"
-              )
-
-              $found = $false
-              foreach ($path in $linuxPaths) {
-                  if (Test-Path $path) {
-                      Write-Host "Found Linux binaries at: $path"
-                      Copy-Item -Path "$path/*" -Destination "output/dxc-$platform/" -Recurse
-                      $found = $true
-                      break
-                  }
-              }
-
-              if (-not $found) {
-                  Write-Error "Could not find Linux binaries in NuGet package"
-                  exit 1
-              }
-          }
+          # Windows binaries are in build/native/bin/{arch}/
+          Copy-Item -Path "nuget-extract/build/native/bin/$arch/*" -Destination "output/dxc-$platform/" -Recurse
 
           # Create archive
           cd output
-          if ("${{ matrix.archive_ext }}" -eq "zip") {
-              Compress-Archive -Path "dxc-$platform" -DestinationPath "dxc-$platform.zip"
-          } else {
-              tar -czf "dxc-$platform.tar.gz" "dxc-$platform"
-          }
+          Compress-Archive -Path "dxc-$platform" -DestinationPath "dxc-$platform.zip"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: dxc-${{ matrix.platform }}
-          path: output/dxc-${{ matrix.platform }}.${{ matrix.archive_ext }}
+          path: |
+            output/dxc-${{ matrix.platform }}.tar.gz
+            output/dxc-${{ matrix.platform }}.zip
 
   create-release:
     name: Create Release
