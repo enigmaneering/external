@@ -2,7 +2,8 @@
 set -e
 
 # Build script for DXC (DirectX Shader Compiler)
-# Builds from source for all platforms (especially macOS where Microsoft doesn't provide binaries)
+# - Windows: Downloads official binaries from NuGet (AMD64 and ARM64 available)
+# - macOS/Linux: Builds from source (Microsoft doesn't provide binaries for these platforms)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="${BUILD_DIR:-$SCRIPT_DIR/../build}"
@@ -20,13 +21,10 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
     PLATFORM="linux-$(uname -m)"
 elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" || "$OSTYPE" == "cygwin" ]]; then
-    # Use CROSS_COMPILE_TARGET if set, otherwise detect from uname
-    if [ -n "$CROSS_COMPILE_TARGET" ]; then
-        ARCH="$CROSS_COMPILE_TARGET"
-    else
-        ARCH=$(uname -m)
-    fi
-    PLATFORM="windows-$ARCH"
+    # Windows: Use official NuGet binaries instead of building from source
+    # This avoids MinGW/MSVC compatibility issues and provides official ARM64 builds
+    echo "Detected Windows platform - downloading official DXC from NuGet..."
+    exec "$SCRIPT_DIR/download-dxc-windows.sh"
 fi
 
 # Normalize architecture names
