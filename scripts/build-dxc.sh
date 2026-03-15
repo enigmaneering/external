@@ -173,7 +173,7 @@ if [ -n "$CROSS_COMPILE_TARGET" ] && [ "$CROSS_COMPILE_TARGET" = "aarch64" ]; th
         $CMAKE_LINKER \
         $CMAKE_SHARED_LINKER_FLAGS \
         "-DCMAKE_C_FLAGS=-O2 -DNDEBUG -include windows.h -include strsafe.h -Wno-unused-command-line-argument -Qunused-arguments" \
-        "-DCMAKE_CXX_FLAGS=-O2 -DNDEBUG -std=gnu++17 -include windows.h -include strsafe.h -include atlbase.h -DATL_NO_VTABLE= -D_ATL_DECLSPEC_ALLOCATOR= -Wno-unused-command-line-argument -Wno-invalid-specialization -Wno-ignored-attributes -Qunused-arguments" \
+        "-DCMAKE_CXX_FLAGS=-O2 -DNDEBUG -std=gnu++17 -include windows.h -include strsafe.h -DATL_NO_VTABLE= -D_ATL_DECLSPEC_ALLOCATOR= -Wno-unused-command-line-argument -Wno-invalid-specialization -Wno-ignored-attributes -Qunused-arguments" \
         -DCMAKE_C_FLAGS_RELEASE="" \
         -DCMAKE_CXX_FLAGS_RELEASE="" \
         -DLLVM_ENABLE_EH=ON \
@@ -190,6 +190,8 @@ if [ -n "$CROSS_COMPILE_TARGET" ] && [ "$CROSS_COMPILE_TARGET" = "aarch64" ]; th
         -DHLSL_BUILD_DXILCONV=OFF \
         -DHLSL_INCLUDE_TESTS=OFF \
         -DCLANG_INCLUDE_TESTS=OFF \
+        -DHLSL_ENABLE_FIXED_VER=ON \
+        -DHLSL_OFFICIAL_BUILD=ON \
         -DHAVE_CXX_ATOMICS_WITHOUT_LIB=TRUE \
         -DHAVE_CXX_ATOMICS64_WITHOUT_LIB=TRUE
 else
