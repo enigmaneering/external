@@ -87,6 +87,8 @@ CMAKE_C_FLAGS=""
 CMAKE_CXX_FLAGS=""
 CMAKE_C_COMPILER=""
 CMAKE_CXX_COMPILER=""
+CMAKE_EXE_LINKER_FLAGS=""
+CMAKE_SHARED_LINKER_FLAGS=""
 
 # macOS cross-compilation (arm64 runner can build x86_64)
 if [ -n "$MACOS_ARCH" ]; then
@@ -102,11 +104,15 @@ if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" || "$OSTYPE" == "cygwin" ]]; t
     # Cross-compilation for ARM64 using Clang
     if [ -n "$CROSS_COMPILE_TARGET" ] && [ "$CROSS_COMPILE_TARGET" = "aarch64" ]; then
         echo "Cross-compiling to ARM64 using Clang"
-        CMAKE_C_COMPILER="-DCMAKE_C_COMPILER=clang"
-        CMAKE_CXX_COMPILER="-DCMAKE_CXX_COMPILER=clang++"
+        CLANG_PATH=$(which clang 2>/dev/null || echo "/mingw64/bin/clang.exe")
+        CLANGXX_PATH=$(which clang++ 2>/dev/null || echo "/mingw64/bin/clang++.exe")
+        CMAKE_C_COMPILER="-DCMAKE_C_COMPILER=${CLANG_PATH}"
+        CMAKE_CXX_COMPILER="-DCMAKE_CXX_COMPILER=${CLANGXX_PATH}"
         CMAKE_SYSTEM_PROCESSOR="-DCMAKE_SYSTEM_PROCESSOR=aarch64"
-        CMAKE_C_FLAGS="-DCMAKE_C_FLAGS=--target=aarch64-w64-mingw32"
-        CMAKE_CXX_FLAGS="-DCMAKE_CXX_FLAGS=--target=aarch64-w64-mingw32"
+        CMAKE_C_FLAGS="-DCMAKE_C_FLAGS=--target=aarch64-w64-mingw32 -fuse-ld=lld"
+        CMAKE_CXX_FLAGS="-DCMAKE_CXX_FLAGS=--target=aarch64-w64-mingw32 -fuse-ld=lld"
+        CMAKE_EXE_LINKER_FLAGS="-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld"
+        CMAKE_SHARED_LINKER_FLAGS="-DCMAKE_SHARED_LINKER_FLAGS=-fuse-ld=lld"
     fi
 fi
 
@@ -131,6 +137,8 @@ cmake .. \
     $CMAKE_CXX_COMPILER \
     $CMAKE_C_FLAGS \
     $CMAKE_CXX_FLAGS \
+    $CMAKE_EXE_LINKER_FLAGS \
+    $CMAKE_SHARED_LINKER_FLAGS \
     -DCMAKE_BUILD_TYPE=Release \
     -DENABLE_SPIRV_CODEGEN=ON \
     -DSPIRV_BUILD_TESTS=OFF \
