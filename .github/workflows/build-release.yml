@@ -300,6 +300,10 @@ jobs:
           # NuGet packages are zip files
           Expand-Archive -Path "dxc.nupkg" -DestinationPath "nuget-extract"
 
+          # Debug: Show package structure
+          Write-Host "Package structure:"
+          Get-ChildItem -Path "nuget-extract/bin" -Recurse | Select-Object FullName
+
           # Create output directory
           New-Item -ItemType Directory -Force -Path "output/dxc-$platform"
 
@@ -308,8 +312,28 @@ jobs:
               # Windows: bin/{arch}/*
               Copy-Item -Path "nuget-extract/bin/$arch/*" -Destination "output/dxc-$platform/" -Recurse
           } else {
-              # Linux: bin/linux_{arch}/*
-              Copy-Item -Path "nuget-extract/bin/linux_$arch/*" -Destination "output/dxc-$platform/" -Recurse
+              # Linux: Try different possible paths
+              $linuxPaths = @(
+                  "nuget-extract/bin/linux_$arch",
+                  "nuget-extract/bin/$arch/linux",
+                  "nuget-extract/bin/linux/$arch",
+                  "nuget-extract/bin/$arch"
+              )
+
+              $found = $false
+              foreach ($path in $linuxPaths) {
+                  if (Test-Path $path) {
+                      Write-Host "Found Linux binaries at: $path"
+                      Copy-Item -Path "$path/*" -Destination "output/dxc-$platform/" -Recurse
+                      $found = $true
+                      break
+                  }
+              }
+
+              if (-not $found) {
+                  Write-Error "Could not find Linux binaries in NuGet package"
+                  exit 1
+              }
           }
 
           # Create archive
