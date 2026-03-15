@@ -162,7 +162,7 @@ fi
 if [ -n "$CROSS_COMPILE_TARGET" ] && [ "$CROSS_COMPILE_TARGET" = "aarch64" ]; then
     # For ARM64, set flags directly in cmake command with proper quoting
     # Include windows.h, disable invalid-specialization error (old DXC code vs new libc++)
-    # Ignore cf-protection warnings (CMake adds them, we can't prevent it)
+    # Enable exceptions (DXC code uses throw statements)
     cmake .. \
         $CMAKE_GENERATOR \
         $CMAKE_ARCH_FLAG \
@@ -176,6 +176,8 @@ if [ -n "$CROSS_COMPILE_TARGET" ] && [ "$CROSS_COMPILE_TARGET" = "aarch64" ]; th
         "-DCMAKE_CXX_FLAGS=-O2 -DNDEBUG -std=gnu++17 -include windows.h -Wno-unused-command-line-argument -Wno-invalid-specialization -Qunused-arguments" \
         -DCMAKE_C_FLAGS_RELEASE="" \
         -DCMAKE_CXX_FLAGS_RELEASE="" \
+        -DLLVM_ENABLE_EH=ON \
+        -DLLVM_ENABLE_RTTI=ON \
         -DCMAKE_BUILD_TYPE=Release \
         -DENABLE_SPIRV_CODEGEN=ON \
         -DSPIRV_BUILD_TESTS=OFF \
