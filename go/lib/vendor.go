@@ -54,9 +54,10 @@ func EnsureLibrariesVersion(version string) error {
 		}
 	}
 
-	// Download LICENSE and README files
+	// Download LICENSE and README files (non-fatal if missing in older releases)
 	if err := downloadLicenseFiles(version, externalDir); err != nil {
-		return fmt.Errorf("failed to download license files: %w", err)
+		fmt.Printf("Warning: Could not download license files: %v\n", err)
+		fmt.Printf("This is expected for older releases. License files are available in the repository.\n")
 	}
 
 	return nil
