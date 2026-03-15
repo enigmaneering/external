@@ -6,7 +6,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUTPUT_DIR="${OUTPUT_DIR:-$SCRIPT_DIR/../output}"
-DXC_VERSION="${DXC_VERSION:-1.8.2407}"  # NuGet version format (no 'v' prefix)
+DXC_VERSION="${DXC_VERSION:-1.8.2407.31}"  # NuGet version format (includes patch number)
 
 # Determine architecture
 if [ -n "$CROSS_COMPILE_TARGET" ]; then
