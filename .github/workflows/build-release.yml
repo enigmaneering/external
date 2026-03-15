@@ -262,77 +262,69 @@ jobs:
           path: ${{ runner.temp }}/output/dxc-${{ matrix.platform }}.*
 
   download-dxc-prebuilt:
-    name: Download DXC (Prebuilt)
+    name: Download DXC (Prebuilt from NuGet)
     strategy:
       fail-fast: true
       matrix:
         include:
           - platform: linux-amd64
             os: ubuntu-latest
-            filename: linux_dxc_2024_07_31.x86_64.tar.gz
-            source: github
+            nuget_arch: x64
+            archive_ext: tar.gz
           - platform: windows-amd64
             os: windows-latest
             nuget_arch: x64
-            source: nuget
+            archive_ext: zip
           - platform: windows-arm64
             os: windows-latest
             nuget_arch: arm64
-            source: nuget
+            archive_ext: zip
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download DXC from GitHub (Linux)
-        if: matrix.source == 'github'
-        run: |
-          DOWNLOAD_URL="https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2407/${{ matrix.filename }}"
-          echo "Downloading DXC for ${{ matrix.platform }}"
-          echo "Download URL: $DOWNLOAD_URL"
-
-          curl -L -o dxc.tar.gz "$DOWNLOAD_URL"
-
-          # Extract and repackage
-          mkdir -p output/dxc-${{ matrix.platform }}
-          tar -xzf dxc.tar.gz -C output/dxc-${{ matrix.platform }}
-
-          # Create archive
-          cd output
-          tar -czf dxc-${{ matrix.platform }}.tar.gz dxc-${{ matrix.platform }}
-
-      - name: Download DXC from NuGet (Windows)
-        if: matrix.source == 'nuget'
+      - name: Download DXC from NuGet
         shell: pwsh
         run: |
-          $version = "1.8.2407.31"
+          $version = "1.9.2602.17"
           $package = "Microsoft.Direct3D.DXC"
-          $nugetUrl = "https://www.nuget.org/api/v2/package/$package/$version"
+          $platform = "${{ matrix.platform }}"
+          $arch = "${{ matrix.nuget_arch }}"
 
-          Write-Host "Downloading $package version $version from NuGet"
+          Write-Host "Downloading $package version $version from NuGet for $platform"
 
           # Download NuGet package
+          $nugetUrl = "https://www.nuget.org/api/v2/package/$package/$version"
           Invoke-WebRequest -Uri $nugetUrl -OutFile "dxc.nupkg"
 
           # NuGet packages are zip files
           Expand-Archive -Path "dxc.nupkg" -DestinationPath "nuget-extract"
 
           # Create output directory
-          New-Item -ItemType Directory -Force -Path "output/dxc-${{ matrix.platform }}"
+          New-Item -ItemType Directory -Force -Path "output/dxc-$platform"
 
-          # Copy binaries from NuGet package (bin/{arch}/*)
-          Copy-Item -Path "nuget-extract/bin/${{ matrix.nuget_arch }}/*" -Destination "output/dxc-${{ matrix.platform }}/" -Recurse
+          # Determine which binaries to copy based on platform
+          if ($platform -like "windows-*") {
+              # Windows: bin/{arch}/*
+              Copy-Item -Path "nuget-extract/bin/$arch/*" -Destination "output/dxc-$platform/" -Recurse
+          } else {
+              # Linux: bin/linux_{arch}/*
+              Copy-Item -Path "nuget-extract/bin/linux_$arch/*" -Destination "output/dxc-$platform/" -Recurse
+          }
 
           # Create archive
           cd output
-          Compress-Archive -Path "dxc-${{ matrix.platform }}" -DestinationPath "dxc-${{ matrix.platform }}.zip"
+          if ("${{ matrix.archive_ext }}" -eq "zip") {
+              Compress-Archive -Path "dxc-$platform" -DestinationPath "dxc-$platform.zip"
+          } else {
+              tar -czf "dxc-$platform.tar.gz" "dxc-$platform"
+          }
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: dxc-${{ matrix.platform }}
-          path: |
-            output/dxc-${{ matrix.platform }}.tar.gz
-            output/dxc-${{ matrix.platform }}.zip
+          path: output/dxc-${{ matrix.platform }}.${{ matrix.archive_ext }}
 
   create-release:
     name: Create Release
