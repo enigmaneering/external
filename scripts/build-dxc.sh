@@ -124,6 +124,9 @@ cmake .. \
     $CMAKE_CXX_COMPILER \
     -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_SHARED_LIBS=OFF \
+    -DLLVM_BUILD_STATIC=ON \
+    -DLLVM_LINK_LLVM_DYLIB=OFF \
+    -DCLANG_LINK_CLANG_DYLIB=OFF \
     -DENABLE_SPIRV_CODEGEN=ON \
     -DSPIRV_BUILD_TESTS=OFF \
     -DCLANG_ENABLE_ARCMT=OFF \
@@ -145,13 +148,23 @@ mkdir -p "$PACKAGE_DIR/bin"
 echo "Packaging DXC..."
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" || "$OSTYPE" == "cygwin" ]]; then
     cp bin/Release/dxc.exe "$PACKAGE_DIR/bin/"
-    # Copy required DLLs
-    find bin/Release -name "*.dll" -exec cp {} "$PACKAGE_DIR/bin/" \;
 else
     cp bin/dxc "$PACKAGE_DIR/bin/"
-    # Copy shared libraries if they exist
-    find bin -name "*.so" -exec cp {} "$PACKAGE_DIR/bin/" \; 2>/dev/null || true
-    find bin -name "*.dylib" -exec cp {} "$PACKAGE_DIR/bin/" \; 2>/dev/null || true
+fi
+
+# Verify binary is properly statically linked
+echo "Verifying DXC binary..."
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    echo "DXC dependencies:"
+    otool -L "$PACKAGE_DIR/bin/dxc"
+    # Warn if it has unexpected dynamic dependencies
+    if otool -L "$PACKAGE_DIR/bin/dxc" | grep -q "libdxcompiler.dylib"; then
+        echo "WARNING: DXC binary has unexpected dynamic dependency on libdxcompiler.dylib"
+        echo "This should be statically linked with BUILD_SHARED_LIBS=OFF"
+    fi
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    echo "DXC dependencies:"
+    ldd "$PACKAGE_DIR/bin/dxc" || true
 fi
 
 # Create archive
