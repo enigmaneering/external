@@ -37,9 +37,10 @@ jobs:
             platform: windows-amd64
             mingw_arch: x86_64
           - os: windows-latest
-            runner: windows-11-arm
+            runner: windows-latest
             platform: windows-arm64
-            mingw_arch: aarch64
+            mingw_arch: x86_64
+            cross_compile_target: aarch64
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -55,6 +56,8 @@ jobs:
             mingw-w64-${{ matrix.mingw_arch }}-cmake
             mingw-w64-${{ matrix.mingw_arch }}-ninja
             mingw-w64-${{ matrix.mingw_arch }}-python
+            mingw-w64-${{ matrix.mingw_arch }}-clang
+            mingw-w64-${{ matrix.mingw_arch }}-lld
             git
             make
 
@@ -65,6 +68,7 @@ jobs:
           BUILD_DIR="${{ runner.temp }}/build" \
           OUTPUT_DIR="${{ runner.temp }}/output" \
           USE_MINGW=1 \
+          CROSS_COMPILE_TARGET="${{ matrix.cross_compile_target || '' }}" \
           bash scripts/build-glslang.sh
 
       - name: Build glslang (macOS/Linux)
@@ -108,9 +112,10 @@ jobs:
             platform: windows-amd64
             mingw_arch: x86_64
           - os: windows-latest
-            runner: windows-11-arm
+            runner: windows-latest
             platform: windows-arm64
-            mingw_arch: aarch64
+            mingw_arch: x86_64
+            cross_compile_target: aarch64
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -135,6 +140,7 @@ jobs:
           BUILD_DIR="${{ runner.temp }}/build" \
           OUTPUT_DIR="${{ runner.temp }}/output" \
           USE_MINGW=1 \
+          CROSS_COMPILE_TARGET="${{ matrix.cross_compile_target || '' }}" \
           bash scripts/build-spirv-cross.sh
 
       - name: Build SPIRV-Cross (macOS/Linux)
@@ -175,9 +181,10 @@ jobs:
             platform: windows-amd64
             mingw_arch: x86_64
           - os: windows-latest
-            runner: windows-11-arm
+            runner: windows-latest
             platform: windows-arm64
-            mingw_arch: aarch64
+            mingw_arch: x86_64
+            cross_compile_target: aarch64
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -201,6 +208,8 @@ jobs:
             mingw-w64-${{ matrix.mingw_arch }}-cmake
             mingw-w64-${{ matrix.mingw_arch }}-ninja
             mingw-w64-${{ matrix.mingw_arch }}-python
+            mingw-w64-${{ matrix.mingw_arch }}-clang
+            mingw-w64-${{ matrix.mingw_arch }}-lld
             git
             make
 
@@ -211,6 +220,7 @@ jobs:
           BUILD_DIR="${{ runner.temp }}/build" \
           OUTPUT_DIR="${{ runner.temp }}/output" \
           USE_MINGW=1 \
+          CROSS_COMPILE_TARGET="${{ matrix.cross_compile_target || '' }}" \
           bash scripts/build-dxc.sh
 
       - name: Build DXC (macOS/Linux)

@@ -57,6 +57,8 @@ cd build
 CMAKE_ARCH_FLAG=""
 CMAKE_OSX_ARCH_FLAG=""
 CMAKE_SYSTEM_PROCESSOR=""
+CMAKE_C_FLAGS=""
+CMAKE_CXX_FLAGS=""
 CMAKE_C_COMPILER=""
 CMAKE_CXX_COMPILER=""
 
@@ -70,6 +72,16 @@ CMAKE_GENERATOR=""
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" || "$OSTYPE" == "cygwin" ]]; then
     CMAKE_GENERATOR="-G Ninja"
     echo "Using MinGW with Ninja generator"
+
+    # Cross-compilation for ARM64 using Clang
+    if [ -n "$CROSS_COMPILE_TARGET" ] && [ "$CROSS_COMPILE_TARGET" = "aarch64" ]; then
+        echo "Cross-compiling to ARM64 using Clang"
+        CMAKE_C_COMPILER="-DCMAKE_C_COMPILER=clang"
+        CMAKE_CXX_COMPILER="-DCMAKE_CXX_COMPILER=clang++"
+        CMAKE_SYSTEM_PROCESSOR="-DCMAKE_SYSTEM_PROCESSOR=aarch64"
+        CMAKE_C_FLAGS="-DCMAKE_C_FLAGS=--target=aarch64-w64-mingw32"
+        CMAKE_CXX_FLAGS="-DCMAKE_CXX_FLAGS=--target=aarch64-w64-mingw32"
+    fi
 fi
 
 # Linux cross-compilation for ARM64
@@ -86,6 +98,8 @@ cmake .. \
     $CMAKE_SYSTEM_PROCESSOR \
     $CMAKE_C_COMPILER \
     $CMAKE_CXX_COMPILER \
+    $CMAKE_C_FLAGS \
+    $CMAKE_CXX_FLAGS \
     -DCMAKE_BUILD_TYPE=Release \
     -DSPIRV_CROSS_SHARED=OFF \
     -DSPIRV_CROSS_STATIC=ON \
