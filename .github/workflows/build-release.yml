@@ -135,6 +135,8 @@ jobs:
             mingw-w64-${{ matrix.mingw_arch }}-gcc
             mingw-w64-${{ matrix.mingw_arch }}-cmake
             mingw-w64-${{ matrix.mingw_arch }}-ninja
+            mingw-w64-${{ matrix.mingw_arch }}-clang
+            mingw-w64-${{ matrix.mingw_arch }}-lld
             git
             make
 
