@@ -97,9 +97,10 @@ if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" || "$OSTYPE" == "cygwin" ]]; t
         echo "Cross-compiling to ARM64 using Clang"
         # Use the llvm-mingw Clang which has ARM64 support
         # It's extracted in the repository root during the workflow
-        # The script is run from repo root, so llvm-mingw is in current directory
-        LLVM_MINGW_DIR="$(pwd)/llvm-mingw-20260311-ucrt-x86_64"
-        LLVM_MINGW_ROOT="$(cygpath -w "$LLVM_MINGW_DIR" 2>/dev/null || echo "$LLVM_MINGW_DIR")"
+        LLVM_MINGW_DIR="$SCRIPT_DIR/../llvm-mingw-20260311-ucrt-x86_64"
+        # Resolve to absolute path and convert to Windows path for CMake
+        LLVM_MINGW_ABS="$(cd "$LLVM_MINGW_DIR" && pwd)"
+        LLVM_MINGW_ROOT="$(cygpath -w "$LLVM_MINGW_ABS" 2>/dev/null || echo "$LLVM_MINGW_ABS")"
         CMAKE_C_COMPILER="-DCMAKE_C_COMPILER=${LLVM_MINGW_ROOT}/bin/clang.exe"
         CMAKE_CXX_COMPILER="-DCMAKE_CXX_COMPILER=${LLVM_MINGW_ROOT}/bin/clang++.exe"
         CMAKE_SYSTEM_PROCESSOR="-DCMAKE_SYSTEM_PROCESSOR=aarch64"
