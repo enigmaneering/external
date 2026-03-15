@@ -150,11 +150,11 @@ func downloadLibrary(library, platform, version, externalDir string) error {
 	tmpFile.Close() // Close before extraction
 
 	if ext == ".tar.gz" {
-		if err := extractTarGz(tmpFile.Name(), externalDir); err != nil {
+		if err := extractTarGz(tmpFile.Name(), externalDir, library, platform); err != nil {
 			return fmt.Errorf("failed to extract tar.gz: %w", err)
 		}
 	} else {
-		if err := extractZip(tmpFile.Name(), externalDir); err != nil {
+		if err := extractZip(tmpFile.Name(), externalDir, library, platform); err != nil {
 			return fmt.Errorf("failed to extract zip: %w", err)
 		}
 	}
@@ -163,8 +163,8 @@ func downloadLibrary(library, platform, version, externalDir string) error {
 	return nil
 }
 
-// extractTarGz extracts a .tar.gz file
-func extractTarGz(archivePath, destDir string) error {
+// extractTarGz extracts a .tar.gz file and renames the root directory
+func extractTarGz(archivePath, destDir, library, platform string) error {
 	file, err := os.Open(archivePath)
 	if err != nil {
 		return err
@@ -178,6 +178,7 @@ func extractTarGz(archivePath, destDir string) error {
 	defer gzr.Close()
 
 	tr := tar.NewReader(gzr)
+	platformPrefix := fmt.Sprintf("%s-%s", library, platform)
 
 	for {
 		header, err := tr.Next()
@@ -188,7 +189,15 @@ func extractTarGz(archivePath, destDir string) error {
 			return err
 		}
 
-		target := filepath.Join(destDir, header.Name)
+		// Strip platform suffix from path
+		name := header.Name
+		if strings.HasPrefix(name, platformPrefix+"/") {
+			name = library + name[len(platformPrefix):]
+		} else if name == platformPrefix {
+			name = library
+		}
+
+		target := filepath.Join(destDir, name)
 
 		switch header.Typeflag {
 		case tar.TypeDir:
@@ -250,16 +259,26 @@ func downloadLicenseFiles(version, externalDir string) error {
 	return nil
 }
 
-// extractZip extracts a .zip file
-func extractZip(archivePath, destDir string) error {
+// extractZip extracts a .zip file and renames the root directory
+func extractZip(archivePath, destDir, library, platform string) error {
 	r, err := zip.OpenReader(archivePath)
 	if err != nil {
 		return err
 	}
 	defer r.Close()
 
+	platformPrefix := fmt.Sprintf("%s-%s", library, platform)
+
 	for _, f := range r.File {
-		target := filepath.Join(destDir, f.Name)
+		// Strip platform suffix from path
+		name := f.Name
+		if strings.HasPrefix(name, platformPrefix+"/") {
+			name = library + name[len(platformPrefix):]
+		} else if name == platformPrefix {
+			name = library
+		}
+
+		target := filepath.Join(destDir, name)
 
 		if f.FileInfo().IsDir() {
 			os.MkdirAll(target, 0755)
