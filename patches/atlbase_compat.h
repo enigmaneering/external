@@ -79,8 +79,11 @@ public:
         p = p2;
     }
 
-    HRESULT QueryInterface(REFIID riid, void** ppv) {
-        return p ? p->QueryInterface(riid, ppv) : E_POINTER;
+    // ATL-style QueryInterface that takes a pointer to a CComPtr
+    // Usage: storage.QueryInterface(&stream) where stream is CComPtr<IStream>
+    template <class Q>
+    HRESULT QueryInterface(Q** pp) {
+        return p ? p->QueryInterface(__uuidof(Q), (void**)pp) : E_POINTER;
     }
 };
 
