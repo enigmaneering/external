@@ -5,6 +5,8 @@
 #define _ATLBASE_COMPAT_H_
 
 #include <unknwn.h>
+#include <cstdio>
+#include <cstdarg>
 
 // ATL macros that DXC expects
 #ifndef ATL_NO_VTABLE
@@ -14,6 +16,21 @@
 #ifndef _ATL_DECLSPEC_ALLOCATOR
 #define _ATL_DECLSPEC_ALLOCATOR
 #endif
+
+// MinGW doesn't have OutputDebugFormatA - provide a simple implementation
+inline void OutputDebugFormatA(const char* format, ...) {
+    char buffer[1024];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
+    // In MinGW, we can use OutputDebugStringA or just write to stderr
+    #ifdef OutputDebugStringA
+    OutputDebugStringA(buffer);
+    #else
+    fprintf(stderr, "%s", buffer);
+    #endif
+}
 
 // Minimal CComPtr implementation compatible with ATL usage in DXC
 template <class T>
