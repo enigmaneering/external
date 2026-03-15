@@ -153,43 +153,66 @@ echo "Configuring DXC..."
 # Skip the cache file entirely for ARM64 to avoid x86-specific flags
 if [ -n "$CROSS_COMPILE_TARGET" ] && [ "$CROSS_COMPILE_TARGET" = "aarch64" ]; then
     CACHE_FILE=""
-    # Set minimal flags without cf-protection - use semicolons as CMake list separators
-    CMAKE_C_FLAGS_OVERRIDE="-DCMAKE_C_FLAGS=-O2;-DNDEBUG"
-    CMAKE_CXX_FLAGS_OVERRIDE="-DCMAKE_CXX_FLAGS=-O2;-DNDEBUG;-std=gnu++17"
 else
     CACHE_FILE="-C ../cmake/caches/PredefinedParams.cmake"
-    CMAKE_C_FLAGS_OVERRIDE=""
-    CMAKE_CXX_FLAGS_OVERRIDE=""
 fi
 
 # Note: DXC builds libdxcompiler as a shared library by default
 # We keep BUILD_SHARED_LIBS=OFF but also build the dylib target
-cmake .. \
-    $CACHE_FILE \
-    $CMAKE_GENERATOR \
-    $CMAKE_ARCH_FLAG \
-    $CMAKE_OSX_ARCH_FLAG \
-    $CMAKE_SYSTEM_PROCESSOR \
-    $CMAKE_C_COMPILER \
-    $CMAKE_CXX_COMPILER \
-    $CMAKE_LINKER \
-    $CMAKE_SHARED_LINKER_FLAGS \
-    $CMAKE_C_FLAGS_OVERRIDE \
-    $CMAKE_CXX_FLAGS_OVERRIDE \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DENABLE_SPIRV_CODEGEN=ON \
-    -DSPIRV_BUILD_TESTS=OFF \
-    -DCLANG_ENABLE_ARCMT=OFF \
-    -DCLANG_ENABLE_STATIC_ANALYZER=OFF \
-    -DLLVM_INCLUDE_TESTS=OFF \
-    -DLLVM_INCLUDE_EXAMPLES=OFF \
-    -DLLVM_TARGETS_TO_BUILD="" \
-    -DHLSL_ENABLE_ANALYZE=OFF \
-    -DHLSL_BUILD_DXILCONV=OFF \
-    -DHLSL_INCLUDE_TESTS=OFF \
-    -DCLANG_INCLUDE_TESTS=OFF \
-    -DHAVE_CXX_ATOMICS_WITHOUT_LIB=TRUE \
-    -DHAVE_CXX_ATOMICS64_WITHOUT_LIB=TRUE
+if [ -n "$CROSS_COMPILE_TARGET" ] && [ "$CROSS_COMPILE_TARGET" = "aarch64" ]; then
+    # For ARM64, set flags directly in cmake command with proper quoting
+    cmake .. \
+        $CMAKE_GENERATOR \
+        $CMAKE_ARCH_FLAG \
+        $CMAKE_OSX_ARCH_FLAG \
+        $CMAKE_SYSTEM_PROCESSOR \
+        $CMAKE_C_COMPILER \
+        $CMAKE_CXX_COMPILER \
+        $CMAKE_LINKER \
+        $CMAKE_SHARED_LINKER_FLAGS \
+        "-DCMAKE_C_FLAGS=-O2 -DNDEBUG" \
+        "-DCMAKE_CXX_FLAGS=-O2 -DNDEBUG -std=gnu++17" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DENABLE_SPIRV_CODEGEN=ON \
+        -DSPIRV_BUILD_TESTS=OFF \
+        -DCLANG_ENABLE_ARCMT=OFF \
+        -DCLANG_ENABLE_STATIC_ANALYZER=OFF \
+        -DLLVM_INCLUDE_TESTS=OFF \
+        -DLLVM_INCLUDE_EXAMPLES=OFF \
+        -DLLVM_TARGETS_TO_BUILD="" \
+        -DHLSL_ENABLE_ANALYZE=OFF \
+        -DHLSL_BUILD_DXILCONV=OFF \
+        -DHLSL_INCLUDE_TESTS=OFF \
+        -DCLANG_INCLUDE_TESTS=OFF \
+        -DHAVE_CXX_ATOMICS_WITHOUT_LIB=TRUE \
+        -DHAVE_CXX_ATOMICS64_WITHOUT_LIB=TRUE
+else
+    # For other platforms, use the cache file
+    cmake .. \
+        $CACHE_FILE \
+        $CMAKE_GENERATOR \
+        $CMAKE_ARCH_FLAG \
+        $CMAKE_OSX_ARCH_FLAG \
+        $CMAKE_SYSTEM_PROCESSOR \
+        $CMAKE_C_COMPILER \
+        $CMAKE_CXX_COMPILER \
+        $CMAKE_LINKER \
+        $CMAKE_SHARED_LINKER_FLAGS \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DENABLE_SPIRV_CODEGEN=ON \
+        -DSPIRV_BUILD_TESTS=OFF \
+        -DCLANG_ENABLE_ARCMT=OFF \
+        -DCLANG_ENABLE_STATIC_ANALYZER=OFF \
+        -DLLVM_INCLUDE_TESTS=OFF \
+        -DLLVM_INCLUDE_EXAMPLES=OFF \
+        -DLLVM_TARGETS_TO_BUILD="" \
+        -DHLSL_ENABLE_ANALYZE=OFF \
+        -DHLSL_BUILD_DXILCONV=OFF \
+        -DHLSL_INCLUDE_TESTS=OFF \
+        -DCLANG_INCLUDE_TESTS=OFF \
+        -DHAVE_CXX_ATOMICS_WITHOUT_LIB=TRUE \
+        -DHAVE_CXX_ATOMICS64_WITHOUT_LIB=TRUE
+fi
 
 echo "Building DXC (this may take 10-20 minutes)..."
 # Building dxc automatically builds dxcompiler as a dependency
