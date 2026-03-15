@@ -127,9 +127,16 @@ if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" || "$OSTYPE" == "cygwin" ]]; t
         CMAKE_SHARED_LINKER_FLAGS="-DCMAKE_SHARED_LINKER_FLAGS=-fuse-ld=lld"
         # Set flags as environment variables to avoid shell quoting issues
         # Include sysroot for Windows headers and libraries (use Unix path for MSYS2)
-        export CFLAGS="--target=aarch64-w64-mingw32 --sysroot=${LLVM_MINGW_ROOT}"
-        export CXXFLAGS="--target=aarch64-w64-mingw32 --sysroot=${LLVM_MINGW_ROOT}"
-        export LDFLAGS="--sysroot=${LLVM_MINGW_ROOT}"
+        # Use Windows-style path with forward slashes for sysroot - convert using cygpath -m
+        SYSROOT_WIN="$(cygpath -m "$LLVM_MINGW_ABS")"
+        # DXC's MSFileSystem needs windows.h but doesn't include it with MinGW
+        export CFLAGS="--target=aarch64-w64-mingw32 --sysroot=${SYSROOT_WIN} -include windows.h"
+        export CXXFLAGS="--target=aarch64-w64-mingw32 --sysroot=${SYSROOT_WIN} -include windows.h"
+        export LDFLAGS="--sysroot=${SYSROOT_WIN}"
+    else
+        # AMD64 MinGW builds also need windows.h for DXC's MSFileSystem
+        export CFLAGS="-include windows.h"
+        export CXXFLAGS="-include windows.h"
     fi
 fi
 
