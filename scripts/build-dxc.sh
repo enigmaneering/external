@@ -60,9 +60,14 @@ if [ ! -f "external/SPIRV-Headers/README.md" ]; then
     git submodule update --init --recursive
 fi
 
-# Patch CMakeLists.txt to remove old CMake policy that newer CMake rejects
-echo "Patching CMakeLists.txt for newer CMake compatibility..."
+# Patch CMakeLists.txt files for newer CMake compatibility
+echo "Patching CMakeLists.txt files for newer CMake compatibility..."
 sed -i.bak '/cmake_policy(SET CMP0051 OLD)/d' CMakeLists.txt
+
+# Patch tools/clang/CMakeLists.txt to update minimum CMake version
+if [ -f tools/clang/CMakeLists.txt ]; then
+    sed -i.bak 's/cmake_minimum_required(VERSION [0-9.]*)/cmake_minimum_required(VERSION 3.5)/' tools/clang/CMakeLists.txt
+fi
 
 # Build DXC
 mkdir -p build
