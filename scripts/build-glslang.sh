@@ -182,6 +182,21 @@ find . -name "*.h" -o -name "*.hpp" | while read header; do
     cp "$header" "$PACKAGE_DIR/$header"
 done
 
+# Copy license
+echo "Packaging license..."
+cd "$BUILD_DIR/glslang"
+if [ -f "LICENSE.txt" ]; then
+    cp "LICENSE.txt" "$PACKAGE_DIR/LICENSE"
+fi
+# SPIRV-Tools license
+if [ -f "External/spirv-tools/LICENSE" ]; then
+    cp "External/spirv-tools/LICENSE" "$PACKAGE_DIR/LICENSES/SPIRV-Tools.LICENSE"
+fi
+# SPIRV-Headers license
+if [ -f "External/spirv-tools/external/spirv-headers/LICENSE" ]; then
+    cp "External/spirv-tools/external/spirv-headers/LICENSE" "$PACKAGE_DIR/LICENSES/SPIRV-Headers.LICENSE"
+fi
+
 # Create archive
 cd "$OUTPUT_DIR"
 tar -czf "glslang-${PLATFORM}.tar.gz" "glslang-$PLATFORM"

@@ -160,6 +160,13 @@ find . -name "*.h" -o -name "*.hpp" | while read header; do
     cp "$header" "$PACKAGE_DIR/$header"
 done
 
+# Copy license
+echo "Packaging license..."
+cd "$BUILD_DIR/spirv-cross"
+if [ -f "LICENSE" ]; then
+    cp "LICENSE" "$PACKAGE_DIR/LICENSE"
+fi
+
 # Create archive
 cd "$OUTPUT_DIR"
 tar -czf "spirv-cross-${PLATFORM}.tar.gz" "spirv-cross-$PLATFORM"

@@ -305,6 +305,14 @@ jobs:
           mkdir -p output/dxc-${{ matrix.platform }}
           tar -xzf dxc.tar.gz -C output/dxc-${{ matrix.platform }}
 
+          # Download license from DXC repo
+          echo "Downloading DXC license..."
+          mkdir -p output/dxc-${{ matrix.platform }}/LICENSES
+          curl -L -o output/dxc-${{ matrix.platform }}/LICENSE \
+            "https://raw.githubusercontent.com/microsoft/DirectXShaderCompiler/$RELEASE_TAG/LICENSE.TXT" || \
+          curl -L -o output/dxc-${{ matrix.platform }}/LICENSE \
+            "https://raw.githubusercontent.com/microsoft/DirectXShaderCompiler/main/LICENSE.TXT"
+
           # Create archive
           cd output
           tar -czf dxc-${{ matrix.platform }}.tar.gz dxc-${{ matrix.platform }}
@@ -338,6 +346,17 @@ jobs:
 
           # Windows binaries are in build/native/bin/{arch}/
           Copy-Item -Path "nuget-extract/build/native/bin/$arch/*" -Destination "output/dxc-$platform/" -Recurse
+
+          # Copy license from NuGet package
+          Write-Host "Copying license..."
+          New-Item -ItemType Directory -Force -Path "output/dxc-$platform/LICENSES"
+          if (Test-Path "nuget-extract/LICENSE.txt") {
+            Copy-Item -Path "nuget-extract/LICENSE.txt" -Destination "output/dxc-$platform/LICENSE"
+          } elseif (Test-Path "nuget-extract/LICENSE.TXT") {
+            Copy-Item -Path "nuget-extract/LICENSE.TXT" -Destination "output/dxc-$platform/LICENSE"
+          } elseif (Test-Path "nuget-extract/LICENSE") {
+            Copy-Item -Path "nuget-extract/LICENSE" -Destination "output/dxc-$platform/LICENSE"
+          }
 
           # Create archive
           cd output

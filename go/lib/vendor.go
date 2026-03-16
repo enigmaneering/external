@@ -120,12 +120,6 @@ func EnsureLibrariesVersion(version string) error {
 		}
 	}
 
-	// Download LICENSE and README files (non-fatal if missing in older releases)
-	if err := downloadLicenseFiles(version, externalDir); err != nil {
-		fmt.Printf("Warning: Could not download license files: %v\n", err)
-		fmt.Printf("This is expected for older releases. License files are available in the repository.\n")
-	}
-
 	// Write version file to track what's installed
 	if err := writeVersionFile(externalDir, version); err != nil {
 		fmt.Printf("Warning: Could not write version file: %v\n", err)
@@ -291,84 +285,6 @@ func extractTarGz(archivePath, destDir, library, platform string) error {
 			outFile.Close()
 		}
 	}
-
-	return nil
-}
-
-// downloadLicenseFiles downloads LICENSE files and README from the external repo
-func downloadLicenseFiles(version, externalDir string) error {
-	// Create LICENSES subdirectory
-	licensesDir := filepath.Join(externalDir, "LICENSES")
-	if err := os.MkdirAll(licensesDir, 0755); err != nil {
-		return fmt.Errorf("failed to create LICENSES directory: %w", err)
-	}
-
-	// Download individual license files
-	licenseFiles := []string{
-		"DXC.LICENSE",
-		"glslang.LICENSE",
-		"SPIRV-Cross.LICENSE",
-		"SPIRV-Headers.LICENSE",
-		"SPIRV-Tools.LICENSE",
-		"README.md",
-	}
-
-	for _, filename := range licenseFiles {
-		url := fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/LICENSES/%s", githubRepo, version, filename)
-		destPath := filepath.Join(licensesDir, filename)
-
-		fmt.Printf("Downloading LICENSES/%s...\n", filename)
-
-		resp, err := http.Get(url)
-		if err != nil {
-			return fmt.Errorf("failed to download %s: %w", filename, err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("download %s failed with status: %s", filename, resp.Status)
-		}
-
-		outFile, err := os.Create(destPath)
-		if err != nil {
-			return fmt.Errorf("failed to create %s: %w", filename, err)
-		}
-		defer outFile.Close()
-
-		if _, err := io.Copy(outFile, resp.Body); err != nil {
-			return fmt.Errorf("failed to write %s: %w", filename, err)
-		}
-
-		fmt.Printf("Successfully downloaded LICENSES/%s\n", filename)
-	}
-
-	// Download main README.md to external root
-	url := fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/README.md", githubRepo, version)
-	destPath := filepath.Join(externalDir, "README.md")
-
-	fmt.Printf("Downloading README.md...\n")
-
-	resp, err := http.Get(url)
-	if err != nil {
-		return fmt.Errorf("failed to download README.md: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("download README.md failed with status: %s", resp.Status)
-	}
-
-	outFile, err := os.Create(destPath)
-	if err != nil {
-		return fmt.Errorf("failed to create README.md: %w", err)
-	}
-	defer outFile.Close()
-
-	if _, err := io.Copy(outFile, resp.Body); err != nil {
-		return fmt.Errorf("failed to write README.md: %w", err)
-	}
-
-	fmt.Printf("Successfully downloaded README.md\n")
 
 	return nil
 }

@@ -273,6 +273,17 @@ else
     fi
 fi
 
+# Copy license
+echo "Packaging license..."
+cd "$BUILD_DIR/dxc"
+if [ -f "LICENSE.TXT" ]; then
+    cp "LICENSE.TXT" "$PACKAGE_DIR/LICENSE"
+elif [ -f "LICENSE.txt" ]; then
+    cp "LICENSE.txt" "$PACKAGE_DIR/LICENSE"
+elif [ -f "LICENSE" ]; then
+    cp "LICENSE" "$PACKAGE_DIR/LICENSE"
+fi
+
 # Create archive
 cd "$OUTPUT_DIR"
 tar -czf "dxc-${PLATFORM}.tar.gz" "dxc-$PLATFORM"
