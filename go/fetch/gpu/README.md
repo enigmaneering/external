@@ -178,6 +178,8 @@ go build -o fetch
 Cross-compile for all platforms:
 
 ```bash
+cd go/fetch
+
 # macOS ARM64
 GOOS=darwin GOARCH=arm64 go build -o fetch-darwin-arm64
 
