@@ -24,10 +24,11 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             # Manual trigger - calculate next version from latest tag
-            # Get all tags matching vX.Y.Z format (excluding go/lib tags)
+            # Get all tags matching vX.Y.Z format (excluding go/lib tags like go/lib/v1.0.0)
             LATEST_TAG=$(git tag | grep '^v[0-9]\+\.[0-9]\+\.[0-9]\+$' | sort -V | tail -1)
             if [ -z "$LATEST_TAG" ]; then
-              LATEST_TAG="v0.0.0"
+              # No tags yet - start at v1.0.42
+              LATEST_TAG="v1.0.41"
             fi
             echo "Latest tag: $LATEST_TAG"
 
@@ -42,20 +43,25 @@ jobs:
               VERSION="v${MAJOR}.${MINOR}.${NEXT_PATCH}"
             else
               # Fallback if tag format is unexpected
-              VERSION="v0.0.43"
+              VERSION="v1.0.42"
             fi
 
-            # Sanity check - version should be >= v0.0.43
+            # Sanity check - version should be >= v1.0.42
             if [[ $VERSION =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
               VER_MAJOR="${BASH_REMATCH[1]}"
               VER_MINOR="${BASH_REMATCH[2]}"
               VER_PATCH="${BASH_REMATCH[3]}"
 
-              # Check if version is less than v0.0.43
-              if [ "$VER_MAJOR" -eq 0 ] && [ "$VER_MINOR" -eq 0 ] && [ "$VER_PATCH" -lt 43 ]; then
-                echo "ERROR: Calculated version $VERSION is less than minimum v0.0.43"
+              # Check if version is less than v1.0.42
+              if [ "$VER_MAJOR" -eq 1 ] && [ "$VER_MINOR" -eq 0 ] && [ "$VER_PATCH" -lt 42 ]; then
+                echo "ERROR: Calculated version $VERSION is less than minimum v1.0.42"
                 echo "Latest tag found: $LATEST_TAG"
                 echo "This indicates a problem with version detection."
+                exit 1
+              fi
+              if [ "$VER_MAJOR" -eq 0 ]; then
+                echo "ERROR: Calculated version $VERSION has major version 0 (minimum is v1.0.42)"
+                echo "Latest tag found: $LATEST_TAG"
                 exit 1
               fi
             fi
@@ -79,8 +85,12 @@ jobs:
               VER_MINOR="${BASH_REMATCH[2]}"
               VER_PATCH="${BASH_REMATCH[3]}"
 
-              if [ "$VER_MAJOR" -eq 0 ] && [ "$VER_MINOR" -eq 0 ] && [ "$VER_PATCH" -lt 43 ]; then
-                echo "ERROR: Tag $VERSION is less than minimum v0.0.43"
+              if [ "$VER_MAJOR" -eq 1 ] && [ "$VER_MINOR" -eq 0 ] && [ "$VER_PATCH" -lt 42 ]; then
+                echo "ERROR: Tag $VERSION is less than minimum v1.0.42"
+                exit 1
+              fi
+              if [ "$VER_MAJOR" -eq 0 ]; then
+                echo "ERROR: Tag $VERSION has major version 0 (minimum is v1.0.42)"
                 exit 1
               fi
             fi
@@ -494,6 +504,74 @@ jobs:
             output/dxc-${{ matrix.platform }}.tar.gz
             output/dxc-${{ matrix.platform }}.zip
 
+  build-fetch:
+    needs: [determine-version]
+    name: Build fetch CLI
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: macos-latest
+            runner: macos-14
+            platform: darwin-arm64
+            goos: darwin
+            goarch: arm64
+          - os: macos-latest
+            runner: macos-14
+            platform: darwin-amd64
+            goos: darwin
+            goarch: amd64
+          - os: ubuntu-latest
+            runner: ubuntu-latest
+            platform: linux-amd64
+            goos: linux
+            goarch: amd64
+          - os: ubuntu-latest
+            runner: ubuntu-24.04-arm
+            platform: linux-arm64
+            goos: linux
+            goarch: arm64
+          - os: windows-latest
+            runner: windows-latest
+            platform: windows-amd64
+            goos: windows
+            goarch: amd64
+          - os: windows-latest
+            runner: windows-latest
+            platform: windows-arm64
+            goos: windows
+            goarch: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Build fetch (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cd go/fetch/gpu
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o fetch-${{ matrix.platform }}
+
+      - name: Build fetch (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cd go/fetch/gpu
+          $env:GOOS="${{ matrix.goos }}"
+          $env:GOARCH="${{ matrix.goarch }}"
+          go build -o fetch-${{ matrix.platform }}.exe
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fetch-${{ matrix.platform }}
+          path: |
+            go/fetch/gpu/fetch-${{ matrix.platform }}
+            go/fetch/gpu/fetch-${{ matrix.platform }}.exe
+
   build-naga:
     needs: [determine-version]
     name: Build Naga
@@ -564,7 +642,7 @@ jobs:
 
   create-release:
     name: Create Release
-    needs: [determine-version, build-glslang, build-spirv-cross, build-dxc, download-dxc-prebuilt, build-naga]
+    needs: [determine-version, build-glslang, build-spirv-cross, build-dxc, download-dxc-prebuilt, build-naga, build-fetch]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -589,26 +667,65 @@ jobs:
           files: |
             artifacts/**/*.tar.gz
             artifacts/**/*.zip
+            artifacts/**/fetch-*
           body: |
-            # Vendor Tools Release ${{ steps.version.outputs.version }}
+            # Shader Compilation Toolchain Release ${{ needs.determine-version.outputs.version }}
 
-            Pre-built shader compilation toolchain for all platforms.
+            Pre-built shader compilation toolchain binaries and fetch CLI tool for all platforms.
+
+            ## Quick Start with fetch CLI
+
+            Download the `fetch` binary for your platform:
+
+            ```bash
+            # macOS ARM64
+            curl -L -o fetch https://github.com/enigmaneering/external/releases/download/${{ needs.determine-version.outputs.version }}/fetch-darwin-arm64
+            chmod +x fetch
+            ./fetch
+
+            # Linux x86_64
+            curl -L -o fetch https://github.com/enigmaneering/external/releases/download/${{ needs.determine-version.outputs.version }}/fetch-linux-amd64
+            chmod +x fetch
+            ./fetch
+
+            # Windows x86_64 (PowerShell)
+            Invoke-WebRequest -Uri "https://github.com/enigmaneering/external/releases/download/${{ needs.determine-version.outputs.version }}/fetch-windows-amd64.exe" -OutFile "fetch.exe"
+            .\fetch.exe
+            ```
 
             ## Included Tools
 
             - **glslang** - GLSL to SPIRV compiler with optimizer
-            - **SPIRV-Cross** - SPIRV transpiler (GLSL/HLSL/MSL)
+            - **SPIRV-Cross** - SPIRV transpiler (GLSL/HLSL/MSL/WGSL)
             - **DXC** - DirectX Shader Compiler (HLSL to SPIRV/DXIL)
+            - **Naga** - WebGPU shader compiler (WGSL to SPIRV)
+            - **fetch** - CLI tool to download and manage toolchain
 
             ## Supported Platforms
 
             - macOS ARM64 (Apple Silicon)
             - macOS x86_64 (Intel)
             - Linux x86_64
+            - Linux ARM64
             - Windows x86_64
+            - Windows ARM64
 
-            ## Usage
+            ## Manual Download
 
             Download the appropriate archives for your platform and extract to your project's `external/` directory.
+
+            ## Go Module
+
+            Use the `fetch` package programmatically:
+
+            ```go
+            import gpu "github.com/enigmaneering/external/go/fetch/gpu"
+
+            func main() {
+                if err := gpu.EnsureLibraries(); err != nil {
+                    log.Fatal(err)
+                }
+            }
+            ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

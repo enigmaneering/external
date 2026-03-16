@@ -1,4 +1,4 @@
-package external
+package gpu
 
 import (
 	"archive/tar"
