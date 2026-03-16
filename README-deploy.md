@@ -76,10 +76,21 @@ These binaries are built specifically for your platform:
 
 ## Licenses
 
-Each tool includes its full license text at the root of its directory:
-- `glslang/LICENSE` - glslang and dependencies (BSD-3-Clause / Apache-2.0)
-- `spirv-cross/LICENSE` - SPIRV-Cross (Apache-2.0)
-- `dxc/LICENSE` - DirectX Shader Compiler (University of Illinois/NCSA)
+Each tool includes its license files preserved from the original source repositories:
+
+### glslang
+- `glslang/LICENSE.txt` - Main glslang license (BSD-3-Clause)
+- `glslang/LICENSES/SPIRV-Tools-LICENSE` - SPIRV-Tools (Apache-2.0)
+- `glslang/LICENSES/SPIRV-Headers-LICENSE` - SPIRV-Headers (MIT-style)
+
+### SPIRV-Cross
+- `spirv-cross/LICENSE` - Main license (Apache-2.0)
+- `spirv-cross/LICENSES/` - Additional license texts referenced by the main license
+
+### DXC (DirectX Shader Compiler)
+- `dxc/LICENSE.TXT` - Main DXC license (University of Illinois/NCSA)
+- `dxc/LICENSES/DxilCompression-LICENSE.TXT` - DxilCompression component (RAD Game Tools/Valve)
+- `dxc/LICENSES/LICENSE-LLVM.txt` - LLVM license (Windows binaries only)
 
 All licenses permit redistribution of precompiled binaries.
 

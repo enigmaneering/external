@@ -81,13 +81,21 @@ mkdir -p glslang/External
 rm -rf glslang/External/spirv-tools
 ln -sf ../../spirv-tools glslang/External/spirv-tools
 
-# Verify license exists before building (fail fast)
-echo "Verifying license file..."
+# Verify licenses exist before building (fail fast)
+echo "Verifying license files..."
 if [ ! -f "glslang/LICENSE.txt" ]; then
     echo "Error: LICENSE.txt not found in glslang repository"
     exit 1
 fi
-echo "License file verified"
+if [ ! -f "spirv-tools/LICENSE" ]; then
+    echo "Error: LICENSE not found in SPIRV-Tools repository"
+    exit 1
+fi
+if [ ! -f "spirv-tools/external/spirv-headers/LICENSE" ]; then
+    echo "Error: LICENSE not found in SPIRV-Headers repository"
+    exit 1
+fi
+echo "License files verified"
 
 # Build glslang
 cd glslang
@@ -190,10 +198,20 @@ find . -name "*.h" -o -name "*.hpp" | while read header; do
     cp "$header" "$PACKAGE_DIR/$header"
 done
 
-# Copy license
-echo "Packaging license..."
+# Copy licenses - preserve structure from source repos
+echo "Packaging licenses..."
 cd "$BUILD_DIR/glslang"
-cp "LICENSE.txt" "$PACKAGE_DIR/LICENSE"
+# Main glslang license
+cp "LICENSE.txt" "$PACKAGE_DIR/LICENSE.txt"
+
+# Create LICENSES directory for bundled dependencies
+mkdir -p "$PACKAGE_DIR/LICENSES"
+
+# SPIRV-Tools license
+cp "External/spirv-tools/LICENSE" "$PACKAGE_DIR/LICENSES/SPIRV-Tools-LICENSE"
+
+# SPIRV-Headers license
+cp "External/spirv-tools/external/spirv-headers/LICENSE" "$PACKAGE_DIR/LICENSES/SPIRV-Headers-LICENSE"
 
 # Create archive
 cd "$OUTPUT_DIR"

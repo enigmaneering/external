@@ -84,15 +84,21 @@ cp "$NUGET_BIN_DIR/dxc.exe" "$OUTPUT_DIR/$PLATFORM/"
 cp "$NUGET_BIN_DIR/dxcompiler.dll" "$OUTPUT_DIR/$PLATFORM/"
 cp "$NUGET_BIN_DIR/dxil.dll" "$OUTPUT_DIR/$PLATFORM/"
 
-# Copy license from NuGet package
-echo "Copying license..."
-# License was already verified to exist
+# Copy licenses - preserve structure from NuGet package
+echo "Copying licenses..."
+# Main license
 if [ -f "LICENSE.txt" ]; then
-    cp "LICENSE.txt" "$OUTPUT_DIR/$PLATFORM/LICENSE"
+    cp "LICENSE.txt" "$OUTPUT_DIR/$PLATFORM/LICENSE.txt"
 elif [ -f "LICENSE.TXT" ]; then
-    cp "LICENSE.TXT" "$OUTPUT_DIR/$PLATFORM/LICENSE"
+    cp "LICENSE.TXT" "$OUTPUT_DIR/$PLATFORM/LICENSE.TXT"
 else
     cp "LICENSE" "$OUTPUT_DIR/$PLATFORM/LICENSE"
+fi
+
+# Copy additional license files
+mkdir -p "$OUTPUT_DIR/$PLATFORM/LICENSES"
+if [ -f "LICENSE-LLVM.txt" ]; then
+    cp "LICENSE-LLVM.txt" "$OUTPUT_DIR/$PLATFORM/LICENSES/LICENSE-LLVM.txt"
 fi
 
 echo "DXC binaries for $PLATFORM installed to $OUTPUT_DIR/$PLATFORM"

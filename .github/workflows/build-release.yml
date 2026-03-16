@@ -299,18 +299,25 @@ jobs:
           DOWNLOAD_URL="https://github.com/microsoft/DirectXShaderCompiler/releases/download/$RELEASE_TAG/$ASSET_NAME"
           echo "Downloading DXC for ${{ matrix.platform }} from GitHub"
 
-          # Download and verify license before downloading large binary (fail fast)
-          echo "Downloading DXC license..."
-          curl -L -o LICENSE.TXT \
+          # Download and verify licenses before downloading large binary (fail fast)
+          echo "Downloading DXC licenses..."
+          mkdir -p licenses
+          curl -L -o licenses/LICENSE.TXT \
             "https://raw.githubusercontent.com/microsoft/DirectXShaderCompiler/$RELEASE_TAG/LICENSE.TXT" || \
-          curl -L -o LICENSE.TXT \
+          curl -L -o licenses/LICENSE.TXT \
             "https://raw.githubusercontent.com/microsoft/DirectXShaderCompiler/main/LICENSE.TXT"
 
-          if [ ! -f LICENSE.TXT ]; then
-            echo "Error: Failed to download LICENSE"
+          # Download DxilCompression license
+          curl -L -o licenses/DxilCompression-LICENSE.TXT \
+            "https://raw.githubusercontent.com/microsoft/DirectXShaderCompiler/$RELEASE_TAG/lib/DxilCompression/LICENSE.TXT" || \
+          curl -L -o licenses/DxilCompression-LICENSE.TXT \
+            "https://raw.githubusercontent.com/microsoft/DirectXShaderCompiler/main/lib/DxilCompression/LICENSE.TXT"
+
+          if [ ! -f licenses/LICENSE.TXT ]; then
+            echo "Error: Failed to download main LICENSE"
             exit 1
           fi
-          echo "License verified"
+          echo "Licenses verified"
 
           curl -L -o dxc.tar.gz "$DOWNLOAD_URL"
 
@@ -318,8 +325,12 @@ jobs:
           mkdir -p output/dxc-${{ matrix.platform }}
           tar -xzf dxc.tar.gz -C output/dxc-${{ matrix.platform }}
 
-          # Copy license
-          cp LICENSE.TXT output/dxc-${{ matrix.platform }}/LICENSE
+          # Copy licenses
+          cp licenses/LICENSE.TXT output/dxc-${{ matrix.platform }}/LICENSE.TXT
+          mkdir -p output/dxc-${{ matrix.platform }}/LICENSES
+          if [ -f licenses/DxilCompression-LICENSE.TXT ]; then
+            cp licenses/DxilCompression-LICENSE.TXT output/dxc-${{ matrix.platform }}/LICENSES/
+          fi
 
           # Create archive
           cd output
@@ -371,14 +382,21 @@ jobs:
           # Windows binaries are in build/native/bin/{arch}/
           Copy-Item -Path "nuget-extract/build/native/bin/$arch/*" -Destination "output/dxc-$platform/" -Recurse
 
-          # Copy license from NuGet package
-          Write-Host "Copying license..."
+          # Copy licenses from NuGet package
+          Write-Host "Copying licenses..."
+          # Main license
           if (Test-Path "nuget-extract/LICENSE.txt") {
-            Copy-Item -Path "nuget-extract/LICENSE.txt" -Destination "output/dxc-$platform/LICENSE"
+            Copy-Item -Path "nuget-extract/LICENSE.txt" -Destination "output/dxc-$platform/LICENSE.txt"
           } elseif (Test-Path "nuget-extract/LICENSE.TXT") {
-            Copy-Item -Path "nuget-extract/LICENSE.TXT" -Destination "output/dxc-$platform/LICENSE"
+            Copy-Item -Path "nuget-extract/LICENSE.TXT" -Destination "output/dxc-$platform/LICENSE.TXT"
           } else {
             Copy-Item -Path "nuget-extract/LICENSE" -Destination "output/dxc-$platform/LICENSE"
+          }
+
+          # Additional licenses
+          New-Item -ItemType Directory -Force -Path "output/dxc-$platform/LICENSES"
+          if (Test-Path "nuget-extract/LICENSE-LLVM.txt") {
+            Copy-Item -Path "nuget-extract/LICENSE-LLVM.txt" -Destination "output/dxc-$platform/LICENSES/LICENSE-LLVM.txt"
           }
 
           # Create archive

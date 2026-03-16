@@ -149,7 +149,7 @@ UPDATED=2026-03-15 02:00:00 UTC
 
 ## License
 
-These are prebuilt binaries of open-source projects. See LICENSES directory for full license text.
+These are prebuilt binaries of open-source projects. See [README-licenses.md](README-licenses.md) for complete license information.
 
 Summary:
 - glslang (+ SPIRV-Tools/SPIRV-Headers): BSD-3-Clause / Apache-2.0

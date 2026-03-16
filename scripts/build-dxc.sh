@@ -281,16 +281,22 @@ else
     fi
 fi
 
-# Copy license
-echo "Packaging license..."
+# Copy licenses - preserve structure from source repo
+echo "Packaging licenses..."
 cd "$BUILD_DIR/dxc"
-# License was already verified to exist before build
+# Main license
 if [ -f "LICENSE.TXT" ]; then
-    cp "LICENSE.TXT" "$PACKAGE_DIR/LICENSE"
+    cp "LICENSE.TXT" "$PACKAGE_DIR/LICENSE.TXT"
 elif [ -f "LICENSE.txt" ]; then
-    cp "LICENSE.txt" "$PACKAGE_DIR/LICENSE"
+    cp "LICENSE.txt" "$PACKAGE_DIR/LICENSE.txt"
 else
     cp "LICENSE" "$PACKAGE_DIR/LICENSE"
+fi
+
+# Copy additional component licenses
+mkdir -p "$PACKAGE_DIR/LICENSES"
+if [ -f "lib/DxilCompression/LICENSE.TXT" ]; then
+    cp "lib/DxilCompression/LICENSE.TXT" "$PACKAGE_DIR/LICENSES/DxilCompression-LICENSE.TXT"
 fi
 
 # Create archive

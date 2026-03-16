@@ -168,10 +168,16 @@ find . -name "*.h" -o -name "*.hpp" | while read header; do
     cp "$header" "$PACKAGE_DIR/$header"
 done
 
-# Copy license
-echo "Packaging license..."
+# Copy licenses - preserve structure from source repo
+echo "Packaging licenses..."
 cd "$BUILD_DIR/spirv-cross"
+# Main license
 cp "LICENSE" "$PACKAGE_DIR/LICENSE"
+
+# Copy LICENSES directory if it exists (contains additional license texts)
+if [ -d "LICENSES" ]; then
+    cp -r "LICENSES" "$PACKAGE_DIR/"
+fi
 
 # Create archive
 cd "$OUTPUT_DIR"
