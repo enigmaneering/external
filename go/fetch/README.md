@@ -58,12 +58,12 @@ fetch || exit 1
 ## Go Package Usage
 
 ```go
-import fetch "github.com/enigmaneering/external/go/fetch/gpu"
+import "github.com/enigmaneering/external/go/fetch/gpu"
 
 func main() {
     // Automatically download and extract external libraries
     // Downloads latest release or upgrades if newer version available
-    if err := fetch.EnsureLibraries(); err != nil {
+    if err := gpu.EnsureLibraries(); err != nil {
         log.Fatal(err)
     }
 

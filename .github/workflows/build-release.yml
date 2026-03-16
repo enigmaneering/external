@@ -696,7 +696,7 @@ jobs:
             Use the `fetch` package programmatically:
 
             ```go
-            import gpu "github.com/enigmaneering/external/go/fetch/gpu"
+            import "github.com/enigmaneering/external/go/fetch/gpu"
 
             func main() {
                 if err := gpu.EnsureLibraries(); err != nil {
