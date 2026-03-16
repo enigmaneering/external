@@ -8,15 +8,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="${BUILD_DIR:-$SCRIPT_DIR/../build}"
 OUTPUT_DIR="${OUTPUT_DIR:-$SCRIPT_DIR/../output}"
 
-# Query GitHub for latest release if not specified
+# Query GitHub for latest wgpu release if not specified
+# Naga is now part of the wgpu project
 if [ -z "$NAGA_VERSION" ]; then
-    echo "Querying GitHub for latest Naga release..."
-    NAGA_VERSION=$(curl -s https://api.github.com/repos/gfx-rs/naga/releases/latest | grep '"tag_name"' | sed -E 's/.*"tag_name": "([^"]+)".*/\1/')
+    echo "Querying GitHub for latest wgpu release..."
+    NAGA_VERSION=$(curl -s https://api.github.com/repos/gfx-rs/wgpu/releases/latest | grep '"tag_name"' | sed -E 's/.*"tag_name": "([^"]+)".*/\1/')
     if [ -z "$NAGA_VERSION" ]; then
-        echo "Error: Could not determine latest Naga version, falling back to main"
-        NAGA_VERSION="main"
+        echo "Warning: Could not determine latest wgpu version, using v28.0.0"
+        NAGA_VERSION="v28.0.0"
     else
-        echo "Latest release: $NAGA_VERSION"
+        echo "Latest wgpu release: $NAGA_VERSION"
     fi
 fi
 
@@ -55,18 +56,18 @@ fi
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
 
-# Clone Naga
-if [ ! -d "naga" ]; then
-    echo "Cloning Naga..."
-    git clone --depth 1 --branch "$NAGA_VERSION" https://github.com/gfx-rs/naga.git
+# Clone wgpu (contains Naga)
+if [ ! -d "wgpu" ]; then
+    echo "Cloning wgpu (contains Naga)..."
+    git clone --depth 1 --branch "$NAGA_VERSION" https://github.com/gfx-rs/wgpu.git
 fi
 
-cd naga
+cd wgpu
 
 # Verify licenses exist before building (fail fast)
 echo "Verifying license files..."
-if [ ! -f "LICENSE-APACHE" ] || [ ! -f "LICENSE-MIT" ]; then
-    echo "Error: LICENSE files not found in Naga repository"
+if [ ! -f "LICENSE.APACHE" ] || [ ! -f "LICENSE.MIT" ]; then
+    echo "Error: LICENSE files not found in wgpu repository"
     exit 1
 fi
 echo "License files verified"
@@ -110,8 +111,8 @@ elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" || "$OSTYPE" == "cygwin" ]];
     fi
 fi
 
-# Build the CLI tool
-cargo build --release --bin naga $CARGO_TARGET_FLAG
+# Build the CLI tool (naga-cli package produces naga binary)
+cargo build --release --package naga-cli $CARGO_TARGET_FLAG
 
 # Determine binary location
 if [ -n "$CARGO_TARGET" ]; then
@@ -132,10 +133,10 @@ else
     cp "$BINARY_DIR/naga" "$PACKAGE_DIR/bin/"
 fi
 
-# Copy licenses (Naga is dual-licensed)
+# Copy licenses (wgpu/naga is dual-licensed)
 echo "Packaging licenses..."
-cp "LICENSE-APACHE" "$PACKAGE_DIR/LICENSE-APACHE"
-cp "LICENSE-MIT" "$PACKAGE_DIR/LICENSE-MIT"
+cp "LICENSE.APACHE" "$PACKAGE_DIR/LICENSE.APACHE"
+cp "LICENSE.MIT" "$PACKAGE_DIR/LICENSE.MIT"
 
 # Copy LICENSES directory if it exists
 if [ -d "LICENSES" ]; then
