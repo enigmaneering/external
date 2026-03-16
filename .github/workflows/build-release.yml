@@ -24,11 +24,11 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             # Manual trigger - calculate next version from latest tag
-            # Get all tags matching vX.Y.Z format (excluding go/lib tags like go/lib/v1.0.0)
+            # Get all tags matching vX.Y.Z format (excluding go/fetch/gpu tags like go/fetch/gpu/v1.0.0)
             LATEST_TAG=$(git tag | grep '^v[0-9]\+\.[0-9]\+\.[0-9]\+$' | sort -V | tail -1)
             if [ -z "$LATEST_TAG" ]; then
-              # No tags yet - start at v1.0.42
-              LATEST_TAG="v1.0.41"
+              # No tags yet - start at v0.0.45 (continuing from where we left off)
+              LATEST_TAG="v0.0.44"
             fi
             echo "Latest tag: $LATEST_TAG"
 
@@ -43,57 +43,34 @@ jobs:
               VERSION="v${MAJOR}.${MINOR}.${NEXT_PATCH}"
             else
               # Fallback if tag format is unexpected
-              VERSION="v1.0.42"
-            fi
-
-            # Sanity check - version should be >= v1.0.42
-            if [[ $VERSION =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-              VER_MAJOR="${BASH_REMATCH[1]}"
-              VER_MINOR="${BASH_REMATCH[2]}"
-              VER_PATCH="${BASH_REMATCH[3]}"
-
-              # Check if version is less than v1.0.42
-              if [ "$VER_MAJOR" -eq 1 ] && [ "$VER_MINOR" -eq 0 ] && [ "$VER_PATCH" -lt 42 ]; then
-                echo "ERROR: Calculated version $VERSION is less than minimum v1.0.42"
-                echo "Latest tag found: $LATEST_TAG"
-                echo "This indicates a problem with version detection."
-                exit 1
-              fi
-              if [ "$VER_MAJOR" -eq 0 ]; then
-                echo "ERROR: Calculated version $VERSION has major version 0 (minimum is v1.0.42)"
-                echo "Latest tag found: $LATEST_TAG"
-                exit 1
-              fi
+              VERSION="v0.0.45"
             fi
 
             echo "Next version: $VERSION"
             echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-            # Create and push the tag
+            # Create and push the tag (both for main release and go/fetch/gpu module)
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
+
+            # Create main release tag (vX.Y.Z)
             git tag $VERSION
             git push origin $VERSION
+
+            # Also create go/fetch/gpu module tag with v1.0.x scheme
+            # Map v0.0.45 -> go/fetch/gpu/v1.0.0, v0.0.46 -> v1.0.1, etc.
+            GPU_PATCH=$((PATCH - 44))  # v0.0.45 becomes patch 1 (v1.0.1), v0.0.44 becomes 0 (v1.0.0)
+            if [ "$GPU_PATCH" -lt 0 ]; then
+              GPU_PATCH=0
+            fi
+            GPU_VERSION="go/fetch/gpu/v1.0.${GPU_PATCH}"
+            git tag $GPU_VERSION
+            git push origin $GPU_VERSION
+            echo "Created module tag: $GPU_VERSION"
           else
             # Tag push - use the tag name
             VERSION="${GITHUB_REF#refs/tags/}"
             echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-            # Sanity check for tag pushes too
-            if [[ $VERSION =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-              VER_MAJOR="${BASH_REMATCH[1]}"
-              VER_MINOR="${BASH_REMATCH[2]}"
-              VER_PATCH="${BASH_REMATCH[3]}"
-
-              if [ "$VER_MAJOR" -eq 1 ] && [ "$VER_MINOR" -eq 0 ] && [ "$VER_PATCH" -lt 42 ]; then
-                echo "ERROR: Tag $VERSION is less than minimum v1.0.42"
-                exit 1
-              fi
-              if [ "$VER_MAJOR" -eq 0 ]; then
-                echo "ERROR: Tag $VERSION has major version 0 (minimum is v1.0.42)"
-                exit 1
-              fi
-            fi
           fi
 
   build-glslang:
