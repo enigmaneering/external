@@ -1,3 +1,3 @@
-module github.com/enigmaneering/external/go/fetch
+module github.com/enigmaneering/redistributables/go/fetch
 
 go 1.23
