@@ -134,9 +134,9 @@ Create a `FREEZE` file as described above in the "Freezing Versions" section.
 
 ## More Information
 
-- **Repository**: https://github.com/enigmaneering/external
-- **Releases**: https://github.com/enigmaneering/external/releases
-- **Go Library**: https://github.com/enigmaneering/external/tree/main/go/lib
+- **Repository**: https://git.enigmaneering.org/enigmaneering/external
+- **Releases**: https://git.enigmaneering.org/enigmaneering/external/releases
+- **Go Library**: https://git.enigmaneering.org/enigmaneering/external/tree/main/go/fetch
 
 ---
 

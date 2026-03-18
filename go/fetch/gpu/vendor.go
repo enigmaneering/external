@@ -20,6 +20,7 @@ var readmeContent string
 
 const (
 	githubRepo = "enigmaneering/external"
+	baseURL    = "https://git.enigmaneering.org"
 )
 
 // GitHubRelease represents a GitHub release
@@ -40,7 +41,7 @@ func GetExternalDir() string {
 // getLatestVersion queries GitHub for the latest redistributables release tag
 // This filters for releases starting with "v0." to avoid go/fetch releases
 func getLatestVersion() (string, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=30", githubRepo)
+	url := fmt.Sprintf("%s/api/v1/repos/%s/releases?per_page=30", baseURL, githubRepo)
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -122,7 +123,7 @@ func EnsureLibrariesVersion(version string) error {
 	}
 
 	// Download each library
-	libraries := []string{"glslang", "spirv-cross", "dxc", "naga"}
+	libraries := []string{"glslang", "spirv-cross", "dxc", "naga", "pocl"}
 	for _, lib := range libraries {
 		if err := downloadLibrary(lib, platform, version, externalDir); err != nil {
 			return fmt.Errorf("failed to download %s: %w", lib, err)
@@ -150,6 +151,7 @@ func isInstalled(externalDir string) bool {
 		filepath.Join(externalDir, "spirv-cross"),
 		filepath.Join(externalDir, "dxc"),
 		filepath.Join(externalDir, "naga"),
+		filepath.Join(externalDir, "pocl"),
 	}
 
 	for _, marker := range markers {
@@ -199,7 +201,7 @@ func downloadLibrary(library, platform, version, externalDir string) error {
 	}
 
 	filename := fmt.Sprintf("%s-%s%s", library, platform, ext)
-	url := fmt.Sprintf("https://github.com/%s/releases/download/%s/%s", githubRepo, version, filename)
+	url := fmt.Sprintf("%s/%s/releases/download/%s/%s", baseURL, githubRepo, version, filename)
 
 	fmt.Printf("Downloading %s from %s...\n", library, url)
 
@@ -322,7 +324,7 @@ func writeVersionFile(externalDir, version string) error {
 
 // cleanExternalDir removes all library directories to prepare for new installation
 func cleanExternalDir(externalDir string) error {
-	dirsToClean := []string{"glslang", "spirv-cross", "dxc", "naga"}
+	dirsToClean := []string{"glslang", "spirv-cross", "dxc", "naga", "pocl"}
 	for _, dir := range dirsToClean {
 		libDir := filepath.Join(externalDir, dir)
 		if err := os.RemoveAll(libDir); err != nil && !os.IsNotExist(err) {

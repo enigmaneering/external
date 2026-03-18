@@ -14,7 +14,7 @@ CLI tool and Go package for automatically downloading and managing shader compil
 
 ## CLI Usage
 
-Download and install the `fetch` binary for your platform from the [latest release](https://github.com/enigmaneering/external/releases/latest).
+Download and install the `fetch` binary for your platform from the [latest release](https://git.enigmaneering.org/enigmaneering/external/releases/latest).
 
 ### Basic Usage
 
@@ -38,13 +38,13 @@ fetch -help
 # Download latest toolchain
 $ fetch
 Installing latest shader compilation toolchain...
-Downloading glslang from https://github.com/enigmaneering/external/releases/download/v1.0.42/glslang-darwin-arm64.tar.gz...
+Downloading glslang from https://git.enigmaneering.org/enigmaneering/external/releases/download/v1.0.42/glslang-darwin-arm64.tar.gz...
 Successfully installed glslang
-Downloading spirv-cross from https://github.com/...
+Downloading spirv-cross from https://git.enigmaneering.org/...
 Successfully installed spirv-cross
-Downloading dxc from https://github.com/...
+Downloading dxc from https://git.enigmaneering.org/...
 Successfully installed dxc
-Downloading naga from https://github.com/...
+Downloading naga from https://git.enigmaneering.org/...
 Successfully installed naga
 
 ✓ Shader compilation toolchain installed successfully
@@ -85,7 +85,7 @@ By default, `EnsureLibraries()` will:
 Example output when upgrading:
 ```
 Upgrading external libraries: v1.0.41 → v1.0.42
-Downloading glslang from https://github.com/...
+Downloading glslang from https://git.enigmaneering.org/...
 Successfully installed glslang
 ...
 ```
@@ -206,7 +206,7 @@ GOOS=windows GOARCH=arm64 go build -o fetch-windows-arm64.exe
 ```makefile
 .PHONY: fetch-toolchain
 fetch-toolchain:
-	@command -v fetch > /dev/null || (echo "fetch not found. Download from https://github.com/enigmaneering/external/releases" && exit 1)
+	@command -v fetch > /dev/null || (echo "fetch not found. Download from https://git.enigmaneering.org/enigmaneering/external/releases" && exit 1)
 	@fetch
 
 build: fetch-toolchain
@@ -218,7 +218,7 @@ build: fetch-toolchain
 ```cmake
 find_program(FETCH_EXECUTABLE fetch)
 if(NOT FETCH_EXECUTABLE)
-    message(FATAL_ERROR "fetch not found. Download from https://github.com/enigmaneering/external/releases")
+    message(FATAL_ERROR "fetch not found. Download from https://git.enigmaneering.org/enigmaneering/external/releases")
 endif()
 
 execute_process(COMMAND ${FETCH_EXECUTABLE})

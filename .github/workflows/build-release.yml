@@ -575,11 +575,11 @@ jobs:
 
             ### Automated Installation (Recommended)
 
-            Use the [`fetch` CLI tool](https://github.com/enigmaneering/external/releases/tag/${{ needs.determine-version.outputs.gpu_version }}) or [Go module](https://github.com/enigmaneering/external/tree/main/go/fetch) for automatic installation:
+            Use the [`fetch` CLI tool](https://git.enigmaneering.org/enigmaneering/external/releases/tag/${{ needs.determine-version.outputs.gpu_version }}) or [Go module](https://git.enigmaneering.org/enigmaneering/external/tree/main/go/fetch) for automatic installation:
 
             ```bash
             # Download fetch CLI from the go/fetch release
-            # See: https://github.com/enigmaneering/external/releases/tag/${{ needs.determine-version.outputs.gpu_version }}
+            # See: https://git.enigmaneering.org/enigmaneering/external/releases/tag/${{ needs.determine-version.outputs.gpu_version }}
 
             ./fetch  # Automatically downloads and installs this version
             ```

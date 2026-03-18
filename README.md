@@ -78,7 +78,7 @@ PLATFORM="darwin-arm64"  # darwin-amd64, linux-amd64, linux-arm64, windows-amd64
 # Download all four tools
 for tool in glslang spirv-cross dxc naga; do
   curl -L -o "${tool}.tar.gz" \
-    "https://github.com/enigmaneering/external/releases/download/${VERSION}/${tool}-${PLATFORM}.tar.gz"
+    "https://git.enigmaneering.org/enigmaneering/external/releases/download/${VERSION}/${tool}-${PLATFORM}.tar.gz"
   tar -xzf "${tool}.tar.gz" -C external/
   rm "${tool}.tar.gz"
 done
