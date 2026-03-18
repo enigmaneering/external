@@ -80,23 +80,23 @@ mkdir build
 cd build
 
 # Determine LLVM configuration
-# POCL requires LLVM - we'll use system LLVM or download it
+# POCL requires LLVM - we'll use system LLVM
 echo "Detecting LLVM installation..."
 
 # Try to find LLVM via llvm-config
-LLVM_CONFIG=""
+LLVM_CONFIG_BIN=""
 for ver in 18 17 16 15 14 13 12 11 10; do
     if command -v llvm-config-$ver &> /dev/null; then
-        LLVM_CONFIG="llvm-config-$ver"
+        LLVM_CONFIG_BIN="llvm-config-$ver"
         break
     fi
 done
 
-if [ -z "$LLVM_CONFIG" ] && command -v llvm-config &> /dev/null; then
-    LLVM_CONFIG="llvm-config"
+if [ -z "$LLVM_CONFIG_BIN" ] && command -v llvm-config &> /dev/null; then
+    LLVM_CONFIG_BIN="llvm-config"
 fi
 
-if [ -z "$LLVM_CONFIG" ]; then
+if [ -z "$LLVM_CONFIG_BIN" ]; then
     echo "Warning: No LLVM installation found. POCL requires LLVM."
     echo "Please install LLVM:"
     echo "  Ubuntu/Debian: sudo apt install llvm-dev clang"
@@ -105,18 +105,20 @@ if [ -z "$LLVM_CONFIG" ]; then
     exit 1
 fi
 
-LLVM_VERSION=$($LLVM_CONFIG --version)
-echo "Found LLVM $LLVM_VERSION at $($LLVM_CONFIG --prefix)"
+LLVM_VERSION=$($LLVM_CONFIG_BIN --version)
+LLVM_PREFIX=$($LLVM_CONFIG_BIN --prefix)
+echo "Found LLVM $LLVM_VERSION at $LLVM_PREFIX"
 
 # Configure CMake build
 # We want a relocatable shared library build with LLVM support
 echo "Configuring POCL build..."
 
+# Note: Don't quote LLVM_CONFIG_BIN - CMake needs it unquoted
 cmake \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="$BUILD_DIR/pocl/install" \
     -DENABLE_LLVM=ON \
-    -DLLVM_CONFIG="$LLVM_CONFIG" \
+    -DLLVM_CONFIG=$LLVM_CONFIG_BIN \
     -DBUILD_SHARED_LIBS=ON \
     -DENABLE_ICD=ON \
     -DINSTALL_OPENCL_HEADERS=ON \
