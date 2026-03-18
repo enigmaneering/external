@@ -503,7 +503,7 @@ jobs:
       - name: Install LLVM
         run: |
           sudo apt-get update
-          sudo apt-get install -y llvm-dev clang libclang-dev cmake pkg-config libhwloc-dev ocl-icd-opencl-dev
+          sudo apt-get install -y llvm-dev clang libclang-dev libclang-cpp-dev cmake pkg-config libhwloc-dev ocl-icd-opencl-dev
 
       - name: Build POCL
         shell: bash
