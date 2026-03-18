@@ -109,16 +109,22 @@ LLVM_VERSION=$($LLVM_CONFIG_BIN --version)
 LLVM_PREFIX=$($LLVM_CONFIG_BIN --prefix)
 echo "Found LLVM $LLVM_VERSION at $LLVM_PREFIX"
 
+# POCL's CMake script expects llvm-config to be in the build directory
+# and will try to create a symlink with a version suffix. We'll work around
+# this by creating the symlink ourselves and pointing to the base name.
+echo "Creating llvm-config symlink for POCL build..."
+ln -sf $(which $LLVM_CONFIG_BIN) llvm-config
+
 # Configure CMake build
 # We want a relocatable shared library build with LLVM support
 echo "Configuring POCL build..."
 
-# Note: Don't quote LLVM_CONFIG_BIN - CMake needs it unquoted
+# Point to the symlink we created (no suffix)
 cmake \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="$BUILD_DIR/pocl/install" \
     -DENABLE_LLVM=ON \
-    -DLLVM_CONFIG=$LLVM_CONFIG_BIN \
+    -DLLVM_CONFIG="$PWD/llvm-config" \
     -DBUILD_SHARED_LIBS=ON \
     -DENABLE_ICD=ON \
     -DINSTALL_OPENCL_HEADERS=ON \

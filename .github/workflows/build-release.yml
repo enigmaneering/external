@@ -7,63 +7,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  determine-version:
-    name: Determine Version
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write  # Need write permission to create and push tags
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Need full history to find all tags
-
-      - name: Calculate version
-        id: version
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            # Manual trigger - calculate next version from latest tag
-            # Get all tags matching vX.Y.Z format (excluding go/fetch/gpu tags like go/fetch/gpu/v1.0.0)
-            LATEST_TAG=$(git tag | grep '^v[0-9]\+\.[0-9]\+\.[0-9]\+$' | sort -V | tail -1)
-            if [ -z "$LATEST_TAG" ]; then
-              # No tags yet - start at v0.0.45 (continuing from where we left off)
-              LATEST_TAG="v0.0.44"
-            fi
-            echo "Latest tag: $LATEST_TAG"
-
-            # Extract version numbers (expecting vX.Y.Z format)
-            if [[ $LATEST_TAG =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-              MAJOR="${BASH_REMATCH[1]}"
-              MINOR="${BASH_REMATCH[2]}"
-              PATCH="${BASH_REMATCH[3]}"
-
-              # Increment patch version
-              NEXT_PATCH=$((PATCH + 1))
-              VERSION="v${MAJOR}.${MINOR}.${NEXT_PATCH}"
-            else
-              # Fallback if tag format is unexpected
-              VERSION="v0.0.45"
-            fi
-
-            echo "Next version: $VERSION"
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-            # Create and push the tag (both for main release and go/fetch/gpu module)
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-
-            # Create main release tag (vX.Y.Z)
-            git tag $VERSION
-            git push origin $VERSION
-          else
-            # Tag push - use the tag name
-            VERSION="${GITHUB_REF#refs/tags/}"
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-          fi
-
   build-glslang:
-    needs: [determine-version]
+    needs: []
     name: Build glslang
     strategy:
       fail-fast: true
@@ -169,7 +114,7 @@ jobs:
           path: ${{ runner.temp }}/output/glslang-${{ matrix.platform }}.*
 
   build-spirv-cross:
-    needs: [determine-version]
+    needs: []
     name: Build SPIRV-Cross
     strategy:
       fail-fast: true
@@ -270,7 +215,7 @@ jobs:
           path: ${{ runner.temp }}/output/spirv-cross-${{ matrix.platform }}.*
 
   build-dxc:
-    needs: [determine-version]
+    needs: []
     name: Build DXC (from source)
     strategy:
       fail-fast: true
@@ -315,7 +260,7 @@ jobs:
           path: ${{ runner.temp }}/output/dxc-${{ matrix.platform }}.*
 
   download-dxc-prebuilt:
-    needs: [determine-version]
+    needs: []
     name: Download DXC (Prebuilt)
     strategy:
       fail-fast: true
@@ -471,7 +416,7 @@ jobs:
             output/dxc-${{ matrix.platform }}.zip
 
   build-naga:
-    needs: [determine-version]
+    needs: []
     name: Build Naga
     strategy:
       fail-fast: true
@@ -539,7 +484,7 @@ jobs:
           path: ${{ runner.temp }}/output/naga-${{ matrix.platform }}.*
 
   build-pocl:
-    needs: [determine-version]
+    needs: []
     name: Build POCL
     strategy:
       fail-fast: true
@@ -574,9 +519,65 @@ jobs:
           name: pocl-${{ matrix.platform }}
           path: ${{ runner.temp }}/output/pocl-${{ matrix.platform }}.*
 
+  determine-version:
+    name: Determine Version
+    needs: [build-glslang, build-spirv-cross, build-dxc, download-dxc-prebuilt, build-naga, build-pocl]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Need write permission to create and push tags
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history to find all tags
+
+      - name: Calculate version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # Manual trigger - calculate next version from latest tag
+            # Get all tags matching vX.Y.Z format (excluding go/fetch/gpu tags like go/fetch/gpu/v1.0.0)
+            LATEST_TAG=$(git tag | grep '^v[0-9]\+\.[0-9]\+\.[0-9]\+$' | sort -V | tail -1)
+            if [ -z "$LATEST_TAG" ]; then
+              # No tags yet - start at v0.0.45 (continuing from where we left off)
+              LATEST_TAG="v0.0.44"
+            fi
+            echo "Latest tag: $LATEST_TAG"
+
+            # Extract version numbers (expecting vX.Y.Z format)
+            if [[ $LATEST_TAG =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+              MAJOR="${BASH_REMATCH[1]}"
+              MINOR="${BASH_REMATCH[2]}"
+              PATCH="${BASH_REMATCH[3]}"
+
+              # Increment patch version
+              NEXT_PATCH=$((PATCH + 1))
+              VERSION="v${MAJOR}.${MINOR}.${NEXT_PATCH}"
+            else
+              # Fallback if tag format is unexpected
+              VERSION="v0.0.45"
+            fi
+
+            echo "Next version: $VERSION"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+            # Create and push the tag (both for main release and go/fetch/gpu module)
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+
+            # Create main release tag (vX.Y.Z)
+            git tag $VERSION
+            git push origin $VERSION
+          else
+            # Tag push - use the tag name
+            VERSION="${GITHUB_REF#refs/tags/}"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+          fi
+
   create-release:
     name: Create Shader Binaries Release
-    needs: [determine-version, build-glslang, build-spirv-cross, build-dxc, download-dxc-prebuilt, build-naga, build-pocl]
+    needs: [determine-version]
     runs-on: ubuntu-latest
     permissions:
       contents: write
