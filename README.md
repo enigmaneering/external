@@ -1,10 +1,6 @@
-# The Enigmaneering Guild - Redistributables
+# Redistributables
 
-The Enigmaneering Guild's redistributable binaries repository containing pre-built shader compilation toolchain for cross-platform development.
-
-## What's Included
-
-This repository provides automatically-built binaries of essential shader compilation tools:
+This repository provides automatically-built binaries of essential tools created by Other:
 
 - **glslang** - GLSL to SPIRV compiler with optimizer support
   - Includes SPIRV-Tools (optimizer and validator)
@@ -22,11 +18,13 @@ This repository provides automatically-built binaries of essential shader compil
 - Windows x86_64
 - Windows ARM64
 
+GitHub Actions will automatically build and release all platforms.
+
 ## Usage
 
 ### Using the `e` CLI Tool (Recommended)
 
-The easiest way to download and manage these redistributables is via [The Enigmaneering Guild CLI Tool (`e`)](https://git.enigmaneering.org/enigmatic):
+The easiest way to download and manage these redistributables is via [enigmatic (`e`)](https://git.enigmaneering.org/enigmatic) -
 
 ```bash
 # Install latest toolchain
@@ -59,23 +57,6 @@ Install:
 go get git.enigmaneering.org/enigmatic@latest
 ```
 
-### Manual Download
-
-Download prebuilt binaries directly from releases:
-
-```bash
-VERSION="v0.0.42"
-PLATFORM="darwin-arm64"  # darwin-amd64, linux-amd64, linux-arm64, windows-amd64, windows-arm64
-
-# Download all four tools
-for tool in glslang spirv-cross dxc naga; do
-  curl -L -o "${tool}.tar.gz" \
-    "https://git.enigmaneering.org/redistributables/releases/download/${VERSION}/${tool}-${PLATFORM}.tar.gz"
-  tar -xzf "${tool}.tar.gz" -C external/
-  rm "${tool}.tar.gz"
-done
-```
-
 ## Automatic Updates
 
 This repository features a fully automated release pipeline:
@@ -96,7 +77,7 @@ This repository features a fully automated release pipeline:
 - Linux/macOS build from source for maximum compatibility
 - Releases include all binaries for all platforms
 
-## Build Details
+## Procurement and Materialization
 
 ### DXC (DirectX Shader Compiler)
 
@@ -129,49 +110,9 @@ This repository features a fully automated release pipeline:
 - Rust-based WGSL to SPIRV compiler
 - All platforms built from source
 
-## Creating Releases
-
-### Automatic (Default)
-Releases are created automatically when upstream dependencies update. No manual intervention needed.
-
-### Manual Trigger
-You can manually trigger a build from GitHub Actions:
-
-1. Go to Actions tab
-2. Select "Build and Release Redistributables" workflow
-3. Click "Run workflow"
-4. Version number will auto-increment from latest tag
-
-### Manual Tag Push
-Alternatively, push a tag manually:
-
-```bash
-git tag v0.0.43
-git push origin v0.0.43
-```
-
-GitHub Actions will automatically build and release all platforms.
-
-## Version Tracking
-
-Each release includes a `CURRENT_VERSIONS.txt` file documenting the exact upstream versions:
-
-```
-DXC=1.9.2602.17
-GLSLANG=16.2.0
-SPIRV_CROSS=vulkan-sdk-1.4.341.0
-NAGA=24.0.0
-UPDATED=2026-03-15 02:00:00 UTC
-```
-
 ## License
 
-These are prebuilt binaries of open-source projects. See [README-licenses.md](README-licenses.md) for complete license information.
-
-Summary:
-- glslang (+ SPIRV-Tools/SPIRV-Headers): BSD-3-Clause / Apache-2.0
-- SPIRV-Cross: Apache-2.0
-- DXC: University of Illinois/NCSA Open Source License
-- Naga: Apache-2.0 / MIT
-
-All licenses permit redistribution of precompiled binaries.
+These are open-source projects which carry their licensure alongside them when requisitioned 
+by `enigmatic` - this ensures we always produce the latest and most current licenses for each 
+redistributable.  No binaries are held in the code, only in the releases fetched or built 
+through requisitioning from stable official sources of truth.
