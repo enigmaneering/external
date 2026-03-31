@@ -6,3 +6,4 @@ output/
 # Version freeze file - prevents automatic updates
 # Users can create this to lock their external library versions
 freeze
+.DS_Store

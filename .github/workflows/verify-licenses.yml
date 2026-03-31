@@ -37,6 +37,10 @@ jobs:
           echo "Checking DXC..."
           git clone --depth 1 https://github.com/microsoft/DirectXShaderCompiler.git dxc
 
+          # Clone wgpu-native
+          echo "Checking wgpu-native..."
+          git clone --depth 1 https://github.com/gfx-rs/wgpu-native.git wgpu-native
+
           # Compute hashes
           echo "Computing license file hashes..."
 
@@ -64,6 +68,12 @@ jobs:
           DXIL_COMP_HASH=$(sha256sum dxc/lib/DxilCompression/LICENSE.TXT | awk '{print $1}')
           echo "DxilCompression LICENSE.TXT: $DXIL_COMP_HASH"
 
+          # wgpu-native (dual-licensed MIT + Apache 2.0)
+          WGPU_MIT_HASH=$(sha256sum wgpu-native/LICENSE.MIT | awk '{print $1}')
+          echo "wgpu-native LICENSE.MIT: $WGPU_MIT_HASH"
+          WGPU_APACHE_HASH=$(sha256sum wgpu-native/LICENSE.APACHE | awk '{print $1}')
+          echo "wgpu-native LICENSE.APACHE: $WGPU_APACHE_HASH"
+
           # Expected hashes (update these when licenses legitimately change)
           # These are reference hashes - if they change, the workflow will fail
           # and we'll be notified to review the license changes
@@ -86,6 +96,8 @@ jobs:
           spirv-cross=$SPIRV_CROSS_HASH
           dxc=$DXC_HASH
           dxil-compression=$DXIL_COMP_HASH
+          wgpu-mit=$WGPU_MIT_HASH
+          wgpu-apache=$WGPU_APACHE_HASH
           EOF
 
           echo "=== Current License Hashes ==="
@@ -107,6 +119,8 @@ jobs:
           EXPECTED_SPIRV_CROSS="cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
           EXPECTED_DXC="27a49e35d1da96eba18fba54bc882667ff0ff8c0254f16f2b6e165d605ba7df8"
           EXPECTED_DXIL_COMP="6f20fa7672b00e2e975c291df737cf227addf3ad32e36fef3fe0f416e4664d3d"
+          EXPECTED_WGPU_MIT="c7fea58d1cfe49634cd92e54fc10a9d871f4b275321a4cd8c09e449122caaeb4"
+          EXPECTED_WGPU_APACHE="a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9"
 
           # Read actual hashes
           cd /tmp/license-check
@@ -116,6 +130,8 @@ jobs:
           ACTUAL_SPIRV_CROSS=$(sha256sum spirv-cross/LICENSE | awk '{print $1}')
           ACTUAL_DXC=$(sha256sum dxc/LICENSE.TXT | awk '{print $1}')
           ACTUAL_DXIL_COMP=$(sha256sum dxc/lib/DxilCompression/LICENSE.TXT | awk '{print $1}')
+          ACTUAL_WGPU_MIT=$(sha256sum wgpu-native/LICENSE.MIT | awk '{print $1}')
+          ACTUAL_WGPU_APACHE=$(sha256sum wgpu-native/LICENSE.APACHE | awk '{print $1}')
 
           FAILED=0
 
@@ -172,6 +188,24 @@ jobs:
             FAILED=1
           else
             echo "✅ DxilCompression license unchanged"
+          fi
+
+          if [ "$ACTUAL_WGPU_MIT" != "$EXPECTED_WGPU_MIT" ]; then
+            echo "❌ ERROR: wgpu-native LICENSE.MIT has changed!"
+            echo "   Expected: $EXPECTED_WGPU_MIT"
+            echo "   Actual:   $ACTUAL_WGPU_MIT"
+            FAILED=1
+          else
+            echo "✅ wgpu-native MIT license unchanged"
+          fi
+
+          if [ "$ACTUAL_WGPU_APACHE" != "$EXPECTED_WGPU_APACHE" ]; then
+            echo "❌ ERROR: wgpu-native LICENSE.APACHE has changed!"
+            echo "   Expected: $EXPECTED_WGPU_APACHE"
+            echo "   Actual:   $ACTUAL_WGPU_APACHE"
+            FAILED=1
+          else
+            echo "✅ wgpu-native Apache license unchanged"
           fi
 
           if [ $FAILED -eq 1 ]; then
