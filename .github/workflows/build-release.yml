@@ -214,6 +214,133 @@ jobs:
           name: spirv-cross-${{ matrix.platform }}
           path: ${{ runner.temp }}/output/spirv-cross-${{ matrix.platform }}.*
 
+  build-wasm:
+    needs: []
+    name: Build WASM artifacts (glslang + SPIRV-Cross)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: "3.1.61"
+
+      - name: Build glslang for WASM
+        run: |
+          GLSLANG_VERSION=$(curl -s https://api.github.com/repos/KhronosGroup/glslang/releases/latest | grep '"tag_name"' | sed -E 's/.*"tag_name": "([^"]+)".*/\1/')
+          echo "Building glslang $GLSLANG_VERSION for WASM..."
+
+          mkdir -p wasm-build && cd wasm-build
+
+          git clone --depth 1 --branch "$GLSLANG_VERSION" https://github.com/KhronosGroup/glslang.git
+          git clone --depth 1 https://github.com/KhronosGroup/SPIRV-Tools.git spirv-tools
+          git clone --depth 1 https://github.com/KhronosGroup/SPIRV-Headers.git spirv-tools/external/spirv-headers
+          mkdir -p glslang/External
+          ln -sf ../../spirv-tools glslang/External/spirv-tools
+
+          cd glslang && mkdir -p build && cd build
+
+          emcmake cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DENABLE_SPVREMAPPER=OFF \
+            -DENABLE_GLSLANG_BINARIES=OFF \
+            -DENABLE_CTEST=OFF \
+            -DENABLE_OPT=ON \
+            -DGLSLANG_TESTS=OFF
+
+          emmake cmake --build . --config Release -j$(nproc)
+
+          # Package
+          PACKAGE_DIR="${{ runner.temp }}/output/glslang-wasm"
+          mkdir -p "$PACKAGE_DIR"
+          find . -name "*.a" -exec cp {} "$PACKAGE_DIR/" \;
+
+          # Copy headers
+          cd "${{ github.workspace }}/wasm-build/glslang"
+          find . -name "*.h" -o -name "*.hpp" | while read header; do
+            mkdir -p "$PACKAGE_DIR/$(dirname "$header")"
+            cp "$header" "$PACKAGE_DIR/$header"
+          done
+
+          # Copy glslang build_info.h
+          if [ -f "build/include/glslang/build_info.h" ]; then
+            mkdir -p "$PACKAGE_DIR/build/include/glslang"
+            cp "build/include/glslang/build_info.h" "$PACKAGE_DIR/build/include/glslang/"
+          fi
+
+          # Licenses
+          cp "LICENSE.txt" "$PACKAGE_DIR/LICENSE.txt"
+          mkdir -p "$PACKAGE_DIR/LICENSES"
+          cp "External/spirv-tools/LICENSE" "$PACKAGE_DIR/LICENSES/SPIRV-Tools-LICENSE"
+          cp "External/spirv-tools/external/spirv-headers/LICENSE" "$PACKAGE_DIR/LICENSES/SPIRV-Headers-LICENSE"
+
+          cd "${{ runner.temp }}/output"
+          tar -czf "glslang-wasm.tar.gz" "glslang-wasm"
+          echo "Created glslang-wasm.tar.gz"
+
+      - name: Build SPIRV-Cross for WASM
+        run: |
+          SPIRV_CROSS_VERSION=$(curl -s https://api.github.com/repos/KhronosGroup/SPIRV-Cross/tags | grep '"name"' | head -1 | sed -E 's/.*"name": "([^"]+)".*/\1/')
+          echo "Building SPIRV-Cross $SPIRV_CROSS_VERSION for WASM..."
+
+          mkdir -p wasm-build-spirv && cd wasm-build-spirv
+          git clone --depth 1 --branch "$SPIRV_CROSS_VERSION" https://github.com/KhronosGroup/SPIRV-Cross.git
+          cd SPIRV-Cross && mkdir -p build && cd build
+
+          emcmake cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+            -DSPIRV_CROSS_CLI=OFF \
+            -DSPIRV_CROSS_ENABLE_TESTS=OFF \
+            -DSPIRV_CROSS_SHARED=OFF \
+            -DSPIRV_CROSS_STATIC=ON
+
+          emmake cmake --build . --config Release -j$(nproc)
+
+          # Package
+          PACKAGE_DIR="${{ runner.temp }}/output/spirv-cross-wasm"
+          mkdir -p "$PACKAGE_DIR/lib" "$PACKAGE_DIR/include/spirv_cross"
+
+          # Libraries
+          find . -name "*.a" -exec cp {} "$PACKAGE_DIR/lib/" \;
+
+          # Headers
+          cd "${{ github.workspace }}/wasm-build-spirv/SPIRV-Cross"
+          cp spirv_cross_c.h "$PACKAGE_DIR/include/spirv_cross/"
+          cp spirv.hpp "$PACKAGE_DIR/include/spirv_cross/"
+          cp spirv_cross.hpp "$PACKAGE_DIR/include/spirv_cross/"
+          cp spirv_glsl.hpp "$PACKAGE_DIR/include/spirv_cross/"
+          cp spirv_hlsl.hpp "$PACKAGE_DIR/include/spirv_cross/"
+          cp spirv_msl.hpp "$PACKAGE_DIR/include/spirv_cross/"
+          cp spirv_common.hpp "$PACKAGE_DIR/include/spirv_cross/"
+          cp spirv_cfg.hpp "$PACKAGE_DIR/include/spirv_cross/"
+          cp spirv_parser.hpp "$PACKAGE_DIR/include/spirv_cross/"
+          cp spirv_cross_parsed_ir.hpp "$PACKAGE_DIR/include/spirv_cross/"
+          cp spirv_cross_containers.hpp "$PACKAGE_DIR/include/spirv_cross/"
+          cp spirv_cross_error_handling.hpp "$PACKAGE_DIR/include/spirv_cross/"
+
+          # License
+          cp LICENSE "$PACKAGE_DIR/LICENSE"
+
+          cd "${{ runner.temp }}/output"
+          tar -czf "spirv-cross-wasm.tar.gz" "spirv-cross-wasm"
+          echo "Created spirv-cross-wasm.tar.gz"
+
+      - name: Upload glslang-wasm
+        uses: actions/upload-artifact@v4
+        with:
+          name: glslang-wasm
+          path: ${{ runner.temp }}/output/glslang-wasm.tar.gz
+
+      - name: Upload spirv-cross-wasm
+        uses: actions/upload-artifact@v4
+        with:
+          name: spirv-cross-wasm
+          path: ${{ runner.temp }}/output/spirv-cross-wasm.tar.gz
+
   build-dxc:
     needs: []
     name: Build DXC (from source)
@@ -583,7 +710,7 @@ jobs:
 
   determine-version:
     name: Determine Version
-    needs: [build-glslang, build-spirv-cross, build-dxc, download-dxc-prebuilt, build-naga, download-wgpu-native]
+    needs: [build-glslang, build-spirv-cross, build-wasm, build-dxc, download-dxc-prebuilt, build-naga, download-wgpu-native]
     runs-on: ubuntu-latest
     permissions:
       contents: write  # Need write permission to create and push tags
