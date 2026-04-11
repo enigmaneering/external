@@ -62,19 +62,20 @@ mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
 
 # Clone clspv (no tagged releases — build from main)
-# Use core.symlinks=false on Windows — NTFS can't create Unix symlinks,
-# causing git clone to return exit 1 even though all files are checked out.
 if [ ! -d "clspv" ]; then
     echo "Cloning clspv..."
-    git -c core.symlinks=false clone https://github.com/google/clspv.git clspv
+    git clone https://github.com/google/clspv.git clspv
 fi
 
 cd clspv
 
-# Find Python — MSYS2 may only provide "python", not "python3"
-PYTHON=$(command -v python3 2>/dev/null || command -v python 2>/dev/null)
+# Find Python — MSYS2 may only provide "python", not "python3".
+# The trailing "|| true" prevents set -e from killing the script before
+# our explicit check can print a useful error message.
+PYTHON=$(command -v python3 2>/dev/null || command -v python 2>/dev/null || true)
 if [ -z "$PYTHON" ]; then
     echo "Error: Python not found (needed for utils/fetch_sources.py)"
+    echo "PATH=$PATH"
     exit 1
 fi
 echo "Using Python: $PYTHON"

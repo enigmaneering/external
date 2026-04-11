@@ -35,10 +35,13 @@ fi
 
 cd clspv-wasm-src
 
-# Find Python — MSYS2 may only provide "python", not "python3"
-PYTHON=$(command -v python3 2>/dev/null || command -v python 2>/dev/null)
+# Find Python.
+# The trailing "|| true" prevents set -e from killing the script before
+# our explicit check can print a useful error message.
+PYTHON=$(command -v python3 2>/dev/null || command -v python 2>/dev/null || true)
 if [ -z "$PYTHON" ]; then
     echo "Error: Python not found (needed for utils/fetch_sources.py)"
+    echo "PATH=$PATH"
     exit 1
 fi
 echo "Using Python: $PYTHON"
