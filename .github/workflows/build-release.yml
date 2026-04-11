@@ -503,6 +503,31 @@ jobs:
           name: spirv-cross-wasm
           path: ${{ runner.temp }}/output/spirv-cross-wasm.tar.gz
 
+  build-dxc-wasm:
+    needs: [verify-licenses]
+    name: Build DXC (WASM)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: "3.1.61"
+
+      - name: Build DXC for WASM
+        run: |
+          chmod +x scripts/build-dxc-wasm.sh
+          BUILD_DIR="${{ runner.temp }}/build" \
+          OUTPUT_DIR="${{ runner.temp }}/output" \
+          bash scripts/build-dxc-wasm.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dxc-wasm
+          path: ${{ runner.temp }}/output/dxc-wasm.*
+
   build-dxc:
     needs: [verify-licenses]
     name: Build DXC (from source)
@@ -772,6 +797,29 @@ jobs:
           name: naga-${{ matrix.platform }}
           path: ${{ runner.temp }}/output/naga-${{ matrix.platform }}.*
 
+  build-naga-wasm:
+    needs: [verify-licenses]
+    name: Build Naga (WASM)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build Naga for WASM
+        run: |
+          chmod +x scripts/build-naga-wasm.sh
+          BUILD_DIR="${{ runner.temp }}/build" \
+          OUTPUT_DIR="${{ runner.temp }}/output" \
+          bash scripts/build-naga-wasm.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: naga-wasm
+          path: ${{ runner.temp }}/output/naga-wasm.*
+
   download-wgpu-native:
     needs: [verify-licenses]
     name: Download wgpu-native (Prebuilt)
@@ -872,7 +920,7 @@ jobs:
 
   determine-version:
     name: Determine Version
-    needs: [build-glslang, build-spirv-cross, build-wasm, build-dxc, download-dxc-prebuilt, build-naga, download-wgpu-native]
+    needs: [build-glslang, build-spirv-cross, build-wasm, build-dxc-wasm, build-dxc, download-dxc-prebuilt, build-naga, build-naga-wasm, download-wgpu-native]
     runs-on: ubuntu-latest
     permissions:
       contents: write  # Need write permission to create and push tags

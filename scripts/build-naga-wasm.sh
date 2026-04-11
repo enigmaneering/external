@@ -1,0 +1,97 @@
+#!/bin/bash
+set -e
+
+# Build script for Naga — WebAssembly target
+# Builds naga-cli for wasm32-wasip1, producing a .wasm module that can be
+# invoked via any WASI runtime (wasmtime, wasmer, Node.js with WASI support).
+#
+# Requires: Rust/Cargo (rustup)
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BUILD_DIR="${BUILD_DIR:-$SCRIPT_DIR/../build}"
+OUTPUT_DIR="${OUTPUT_DIR:-$SCRIPT_DIR/../output}"
+PLATFORM="wasm"
+
+# Query GitHub for latest wgpu release if not specified
+if [ -z "$NAGA_VERSION" ]; then
+    echo "Querying GitHub for latest wgpu release..."
+    NAGA_VERSION=$(curl -s https://api.github.com/repos/gfx-rs/wgpu/releases/latest \
+        | grep '"tag_name"' | sed -E 's/.*"tag_name": "([^"]+)".*/\1/')
+    if [ -z "$NAGA_VERSION" ]; then
+        echo "Warning: Could not determine latest wgpu version, using v28.0.0"
+        NAGA_VERSION="v28.0.0"
+    else
+        echo "Latest wgpu release: $NAGA_VERSION"
+    fi
+fi
+
+echo "Building Naga $NAGA_VERSION for WebAssembly..."
+
+# Check if Rust is installed
+if ! command -v cargo &> /dev/null; then
+    echo "Error: Rust/Cargo not found. Please install Rust from https://rustup.rs/"
+    exit 1
+fi
+
+# Create build directory
+mkdir -p "$BUILD_DIR"
+cd "$BUILD_DIR"
+
+# Clone wgpu (contains Naga)
+if [ ! -d "wgpu-wasm" ]; then
+    echo "Cloning wgpu (contains Naga)..."
+    git clone --depth 1 --branch "$NAGA_VERSION" https://github.com/gfx-rs/wgpu.git wgpu-wasm
+fi
+
+cd wgpu-wasm
+
+# Verify licenses exist before building (fail fast)
+echo "Verifying license files..."
+if [ ! -f "LICENSE.APACHE" ] || [ ! -f "LICENSE.MIT" ]; then
+    echo "Error: LICENSE files not found in wgpu repository"
+    exit 1
+fi
+echo "License files verified"
+
+# Add WASI target
+echo "Adding wasm32-wasip1 target..."
+rustup target add wasm32-wasip1
+
+# Build Naga CLI for WASI
+echo "Building Naga CLI for WebAssembly..."
+cargo build --release --package naga-cli --target wasm32-wasip1
+
+# Package output
+PACKAGE_DIR="$OUTPUT_DIR/naga-$PLATFORM"
+mkdir -p "$PACKAGE_DIR/bin"
+
+# Copy the WASM binary
+echo "Packaging WASM binary..."
+cp "target/wasm32-wasip1/release/naga.wasm" "$PACKAGE_DIR/bin/"
+
+# Verify we got the output
+if [ ! -f "$PACKAGE_DIR/bin/naga.wasm" ]; then
+    echo "Error: naga.wasm not found in build output"
+    ls -la target/wasm32-wasip1/release/ 2>/dev/null || true
+    exit 1
+fi
+
+echo "Binary size: $(du -h "$PACKAGE_DIR/bin/naga.wasm" | cut -f1)"
+
+# Copy licenses (wgpu/naga is dual-licensed)
+echo "Packaging licenses..."
+mkdir -p "$PACKAGE_DIR/licenses/naga"
+cp "LICENSE.APACHE" "$PACKAGE_DIR/licenses/naga/LICENSE.APACHE"
+cp "LICENSE.MIT" "$PACKAGE_DIR/licenses/naga/LICENSE.MIT"
+
+# Copy LICENSES directory if it exists
+if [ -d "LICENSES" ]; then
+    cp -r "LICENSES" "$PACKAGE_DIR/licenses/naga/"
+fi
+
+# Create archive
+cd "$OUTPUT_DIR"
+tar -czf "naga-${PLATFORM}.tar.gz" "naga-$PLATFORM"
+echo "Created: naga-${PLATFORM}.tar.gz"
+
+echo "Build complete!"
