@@ -62,9 +62,11 @@ mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
 
 # Clone clspv (no tagged releases — build from main)
+# Use core.symlinks=false on Windows — NTFS can't create Unix symlinks,
+# causing git clone to return exit 1 even though all files are checked out.
 if [ ! -d "clspv" ]; then
     echo "Cloning clspv..."
-    git clone https://github.com/google/clspv.git clspv
+    git -c core.symlinks=false clone https://github.com/google/clspv.git clspv
 fi
 
 cd clspv
