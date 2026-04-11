@@ -144,21 +144,23 @@ echo "Creating combined static library..."
 mkdir -p "$PACKAGE_DIR/lib"
 COMBINED_LIB="$PACKAGE_DIR/lib/libdxcompiler-full.a"
 
-# Collect all .a files from the build tree
-ALL_ARCHIVES=$(find lib -name "*.a" -type f 2>/dev/null)
+# Collect all .a files from the entire build tree (CMake scatters them
+# across nested directories, not just lib/)
+ALL_ARCHIVES=$(find . -name "*.a" -type f 2>/dev/null)
 if [ -z "$ALL_ARCHIVES" ]; then
     echo "Warning: No static libraries found in build/lib — skipping library packaging"
 else
     # Create a combined archive using Emscripten's emar
     # Extract all objects into a temp dir, then repack
     MERGE_DIR=$(mktemp -d)
+    BUILD_ABS="$BUILD_DIR/dxc-wasm-src/build"
     for archive in $ALL_ARCHIVES; do
         # Extract each archive into a uniquely-named subdirectory to avoid name collisions
         SUBDIR="$MERGE_DIR/$(echo "$archive" | tr '/' '_')"
         mkdir -p "$SUBDIR"
         cd "$SUBDIR"
-        emar x "$BUILD_DIR/dxc-wasm-src/build/$archive" 2>/dev/null || true
-        cd "$BUILD_DIR/dxc-wasm-src/build"
+        emar x "$BUILD_ABS/$archive" 2>/dev/null || true
+        cd "$BUILD_ABS"
     done
     # Repack all objects into one archive
     emar rcs "$COMBINED_LIB" $(find "$MERGE_DIR" -name "*.o" -type f)
