@@ -82,13 +82,21 @@ fi
 
 cd clspv
 
-# Find Python — MSYS2 may only provide "python", not "python3".
-# The trailing "|| true" prevents set -e from killing the script before
-# our explicit check can print a useful error message.
+# Find Python — command -v may not resolve MinGW executables on MSYS2,
+# so fall back to probing known install locations directly.
 PYTHON=$(command -v python3 2>/dev/null || command -v python 2>/dev/null || true)
+if [ -z "$PYTHON" ]; then
+    for p in /ucrt64/bin/python3.exe /ucrt64/bin/python.exe /mingw64/bin/python3.exe /mingw64/bin/python.exe; do
+        if [ -x "$p" ]; then
+            PYTHON="$p"
+            break
+        fi
+    done
+fi
 if [ -z "$PYTHON" ]; then
     echo "Error: Python not found (needed for utils/fetch_sources.py)"
     echo "PATH=$PATH"
+    ls /ucrt64/bin/python* /mingw64/bin/python* /usr/bin/python* 2>/dev/null || echo "  (no python binaries found)"
     exit 1
 fi
 echo "Using Python: $PYTHON"
