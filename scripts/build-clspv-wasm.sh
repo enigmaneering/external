@@ -1,0 +1,172 @@
+#!/bin/bash
+set -e
+
+# Build script for clspv (OpenCL C to Vulkan SPIR-V compiler) — WebAssembly target
+# Clones upstream clspv, applies Emscripten compatibility fixes if needed, and builds
+# a clspv.js + clspv.wasm pair plus a combined static library for direct linking.
+#
+# Requires: Emscripten SDK (emcmake/emmake on PATH)
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BUILD_DIR="${BUILD_DIR:-$SCRIPT_DIR/../build}"
+OUTPUT_DIR="${OUTPUT_DIR:-$SCRIPT_DIR/../output}"
+PLATFORM="wasm"
+
+echo "Building clspv for WebAssembly..."
+
+# Verify Emscripten is available
+if ! command -v emcmake &> /dev/null; then
+    echo "Error: emcmake not found. Install the Emscripten SDK first."
+    exit 1
+fi
+
+# clspv/LLVM is massive — limit parallelism to avoid OOM
+NCPU=2
+
+# Create build directory
+mkdir -p "$BUILD_DIR"
+cd "$BUILD_DIR"
+
+# Clone clspv
+if [ ! -d "clspv-wasm-src" ]; then
+    echo "Cloning clspv..."
+    git clone https://github.com/google/clspv.git clspv-wasm-src
+fi
+
+cd clspv-wasm-src
+
+# Fetch dependencies (LLVM, Clang, SPIRV-Tools, SPIRV-Headers)
+if [ ! -d "third_party/llvm" ]; then
+    echo "Fetching clspv dependencies (LLVM, SPIRV-Tools, etc.)..."
+    python3 utils/fetch_sources.py
+fi
+
+# Verify license exists (fail fast)
+echo "Verifying license file..."
+if [ ! -f "LICENSE" ]; then
+    echo "Error: LICENSE not found in clspv repository"
+    exit 1
+fi
+echo "License file verified"
+
+# Apply Emscripten compatibility patches if they exist
+PATCH_FILE="$SCRIPT_DIR/../patches/clspv-emscripten.patch"
+if [ -f "$PATCH_FILE" ]; then
+    echo "Applying Emscripten compatibility patches..."
+    git apply "$PATCH_FILE"
+    echo "Emscripten patches applied successfully"
+else
+    echo "No Emscripten patches found — building without patches"
+fi
+
+# Configure clspv for WebAssembly
+mkdir -p build
+cd build
+
+echo "Configuring clspv for WebAssembly..."
+# Note: clspv's CMakeLists.txt handles LLVM_TARGETS_TO_BUILD and libclc internally.
+# Do NOT override LLVM_TARGETS_TO_BUILD — libclc build requires a native backend.
+emcmake cmake .. \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DLLVM_USE_HOST_TOOLS=OFF \
+    -DLLVM_ENABLE_EH=ON \
+    -DLLVM_ENABLE_RTTI=ON \
+    -DCLSPV_BUILD_TESTS=OFF \
+    -DCLSPV_BUILD_SPIRV_DIS=OFF \
+    -DENABLE_CLSPV_OPT=OFF \
+    -DLLVM_INCLUDE_TESTS=OFF \
+    -DLLVM_INCLUDE_EXAMPLES=OFF \
+    -DLLVM_INCLUDE_BENCHMARKS=OFF
+
+echo "Building clspv for WebAssembly (this may take 30-60 minutes)..."
+emmake cmake --build . --config Release --target clspv -j$NCPU
+
+# Package output
+PACKAGE_DIR="$OUTPUT_DIR/clspv-$PLATFORM"
+mkdir -p "$PACKAGE_DIR/bin"
+
+echo "Packaging clspv WASM..."
+# Emscripten produces a .js loader and .wasm binary.
+# LLVM's build system may append a version suffix (e.g. clspv.js-3.7 + clspv.js-3.wasm),
+# so we find the actual files by glob and rename them to clean names.
+CLSPV_JS=$(find bin -name "clspv.js*" -not -name "*.wasm" 2>/dev/null | head -1)
+CLSPV_WASM=$(find bin -name "clspv.js*.wasm" -o -name "clspv.wasm" 2>/dev/null | head -1)
+
+if [ -z "$CLSPV_JS" ] || [ -z "$CLSPV_WASM" ]; then
+    echo "Warning: clspv WASM JS/WASM outputs not found in bin/"
+    echo "Build output contents:"
+    find bin -type f -name "clspv*" 2>/dev/null || echo "  (no clspv files found in bin/)"
+    echo "Continuing with static library packaging..."
+else
+    cp "$CLSPV_JS" "$PACKAGE_DIR/bin/clspv.js"
+    cp "$CLSPV_WASM" "$PACKAGE_DIR/bin/clspv.wasm"
+    echo "Packaged: $CLSPV_JS -> clspv.js, $CLSPV_WASM -> clspv.wasm"
+fi
+
+# Package static library — merge all .a files into a single combined archive
+# so consumers can link clspv without tracking ~50 individual LLVM libraries.
+echo "Creating combined static library..."
+mkdir -p "$PACKAGE_DIR/lib"
+COMBINED_LIB="$PACKAGE_DIR/lib/libclspv-full.a"
+
+# Collect all .a files from the entire build tree (CMake scatters them
+# across nested directories, not just lib/)
+ALL_ARCHIVES=$(find . -name "*.a" -type f 2>/dev/null)
+if [ -z "$ALL_ARCHIVES" ]; then
+    echo "Warning: No static libraries found — skipping library packaging"
+else
+    # Create a combined archive using Emscripten's emar
+    # Extract all objects into a temp dir, then repack
+    MERGE_DIR=$(mktemp -d)
+    BUILD_ABS="$(pwd)"
+    for archive in $ALL_ARCHIVES; do
+        # Extract each archive into a uniquely-named subdirectory to avoid name collisions
+        SUBDIR="$MERGE_DIR/$(echo "$archive" | tr '/' '_')"
+        mkdir -p "$SUBDIR"
+        cd "$SUBDIR"
+        emar x "$BUILD_ABS/$archive" 2>/dev/null || true
+        cd "$BUILD_ABS"
+    done
+    # Repack all objects into one archive
+    emar rcs "$COMBINED_LIB" $(find "$MERGE_DIR" -name "*.o" -type f)
+    rm -rf "$MERGE_DIR"
+    echo "Created: libclspv-full.a ($(du -h "$COMBINED_LIB" | cut -f1))"
+fi
+
+# Package headers — clspv's public API for direct main() invocation
+echo "Packaging headers..."
+mkdir -p "$PACKAGE_DIR/include"
+cd "$BUILD_DIR/clspv-wasm-src"
+# The main entry point header — consumers call clspv's main() directly
+if [ -f "include/clspv/Compiler.h" ]; then
+    mkdir -p "$PACKAGE_DIR/include/clspv"
+    cp include/clspv/Compiler.h "$PACKAGE_DIR/include/clspv/"
+fi
+# Copy any other public headers
+find include/clspv -name "*.h" -exec cp {} "$PACKAGE_DIR/include/clspv/" \; 2>/dev/null || true
+
+# Copy licenses
+echo "Packaging licenses..."
+cd "$BUILD_DIR/clspv-wasm-src"
+mkdir -p "$PACKAGE_DIR/licenses/clspv/LICENSES"
+
+# Main license (Apache 2.0 with LLVM Exceptions)
+cp LICENSE "$PACKAGE_DIR/licenses/clspv/LICENSE"
+
+# Bundled dependency licenses
+if [ -f "third_party/llvm/llvm/LICENSE.TXT" ]; then
+    cp "third_party/llvm/llvm/LICENSE.TXT" "$PACKAGE_DIR/licenses/clspv/LICENSES/LLVM-LICENSE.TXT"
+fi
+if [ -f "third_party/SPIRV-Tools/LICENSE" ]; then
+    cp "third_party/SPIRV-Tools/LICENSE" "$PACKAGE_DIR/licenses/clspv/LICENSES/SPIRV-Tools-LICENSE"
+fi
+if [ -f "third_party/SPIRV-Headers/LICENSE" ]; then
+    cp "third_party/SPIRV-Headers/LICENSE" "$PACKAGE_DIR/licenses/clspv/LICENSES/SPIRV-Headers-LICENSE"
+fi
+
+# Create archive
+cd "$OUTPUT_DIR"
+tar -czf "clspv-${PLATFORM}.tar.gz" "clspv-$PLATFORM"
+echo "Created: clspv-${PLATFORM}.tar.gz"
+
+echo "Build complete!"
