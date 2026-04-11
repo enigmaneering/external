@@ -1,0 +1,22 @@
+[package]
+name = "naga-ffi"
+version = "0.1.0"
+edition = "2021"
+description = "Thin C FFI wrapper around Naga for linking into non-Rust projects"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+naga = { git = "https://github.com/gfx-rs/wgpu.git", features = [
+    "wgsl-in",
+    "wgsl-out",
+    "spv-in",
+    "spv-out",
+    "glsl-in",
+    "glsl-out",
+] }
+
+[profile.release]
+lto = true
+opt-level = "s"

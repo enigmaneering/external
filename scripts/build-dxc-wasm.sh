@@ -138,6 +138,49 @@ cp "$DXC_JS" "$PACKAGE_DIR/bin/dxc.js"
 cp "$DXC_WASM" "$PACKAGE_DIR/bin/dxc.wasm"
 echo "Packaged: $DXC_JS -> dxc.js, $DXC_WASM -> dxc.wasm"
 
+# Package static library — merge all .a files into a single combined archive
+# so consumers can link DXC without tracking ~50 individual LLVM libraries.
+echo "Creating combined static library..."
+mkdir -p "$PACKAGE_DIR/lib"
+COMBINED_LIB="$PACKAGE_DIR/lib/libdxcompiler-full.a"
+
+# Collect all .a files from the build tree
+ALL_ARCHIVES=$(find lib -name "*.a" -type f 2>/dev/null)
+if [ -z "$ALL_ARCHIVES" ]; then
+    echo "Warning: No static libraries found in build/lib — skipping library packaging"
+else
+    # Create a combined archive using Emscripten's emar
+    # Extract all objects into a temp dir, then repack
+    MERGE_DIR=$(mktemp -d)
+    for archive in $ALL_ARCHIVES; do
+        # Extract each archive into a uniquely-named subdirectory to avoid name collisions
+        SUBDIR="$MERGE_DIR/$(echo "$archive" | tr '/' '_')"
+        mkdir -p "$SUBDIR"
+        cd "$SUBDIR"
+        emar x "$BUILD_DIR/dxc-wasm-src/build/$archive" 2>/dev/null || true
+        cd "$BUILD_DIR/dxc-wasm-src/build"
+    done
+    # Repack all objects into one archive
+    emar rcs "$COMBINED_LIB" $(find "$MERGE_DIR" -name "*.o" -type f)
+    rm -rf "$MERGE_DIR"
+    echo "Created: libdxcompiler-full.a ($(du -h "$COMBINED_LIB" | cut -f1))"
+fi
+
+# Package headers — only the public API surface needed for compilation
+echo "Packaging headers..."
+mkdir -p "$PACKAGE_DIR/include/dxc/Support"
+cd "$BUILD_DIR/dxc-wasm-src"
+cp include/dxc/dxcapi.h "$PACKAGE_DIR/include/dxc/"
+cp include/dxc/dxcerrors.h "$PACKAGE_DIR/include/dxc/"
+cp include/dxc/WinAdapter.h "$PACKAGE_DIR/include/dxc/"
+cp include/dxc/Support/WinIncludes.h "$PACKAGE_DIR/include/dxc/Support/"
+cp include/dxc/Support/dxcapi.use.h "$PACKAGE_DIR/include/dxc/Support/"
+cp include/dxc/Support/microcom.h "$PACKAGE_DIR/include/dxc/Support/"
+cp include/dxc/Support/Global.h "$PACKAGE_DIR/include/dxc/Support/"
+cp include/dxc/Support/exception.h "$PACKAGE_DIR/include/dxc/Support/"
+cp include/dxc/Support/ErrorCodes.h "$PACKAGE_DIR/include/dxc/Support/"
+cp include/dxc/Support/WinFunctions.h "$PACKAGE_DIR/include/dxc/Support/"
+
 # Copy licenses - preserve structure from source repo
 echo "Packaging licenses..."
 cd "$BUILD_DIR/dxc-wasm-src"

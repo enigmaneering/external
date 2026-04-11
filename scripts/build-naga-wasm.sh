@@ -57,26 +57,66 @@ echo "License files verified"
 echo "Adding wasm32-wasip1 target..."
 rustup target add wasm32-wasip1
 
-# Build Naga CLI for WASI
+# Build Naga CLI for WASI (standalone tool)
 echo "Building Naga CLI for WebAssembly..."
 cargo build --release --package naga-cli --target wasm32-wasip1
+
+# Build Naga FFI static library for Emscripten (linkable into C/C++ projects)
+echo "Building Naga FFI static library for Emscripten..."
+NAGA_FFI_DIR="$SCRIPT_DIR/../naga-ffi"
+if [ ! -d "$NAGA_FFI_DIR" ]; then
+    echo "Error: naga-ffi crate not found at $NAGA_FFI_DIR"
+    exit 1
+fi
+
+# The naga-ffi crate needs to resolve the naga dependency from the wgpu checkout
+# Override the git dependency to use our local clone
+mkdir -p "$NAGA_FFI_DIR/.cargo"
+cat > "$NAGA_FFI_DIR/.cargo/config.toml" << CARGO_EOF
+[patch.'https://github.com/gfx-rs/wgpu.git']
+naga = { path = "$BUILD_DIR/wgpu-wasm/naga" }
+CARGO_EOF
+
+rustup target add wasm32-unknown-emscripten
+cd "$NAGA_FFI_DIR"
+cargo build --release --target wasm32-unknown-emscripten
+cd "$BUILD_DIR/wgpu-wasm"
 
 # Package output
 PACKAGE_DIR="$OUTPUT_DIR/naga-$PLATFORM"
 mkdir -p "$PACKAGE_DIR/bin"
+mkdir -p "$PACKAGE_DIR/lib"
+mkdir -p "$PACKAGE_DIR/include"
 
-# Copy the WASM binary
+# Copy the WASI CLI binary
 echo "Packaging WASM binary..."
 cp "target/wasm32-wasip1/release/naga.wasm" "$PACKAGE_DIR/bin/"
 
-# Verify we got the output
+# Copy the Emscripten static library
+echo "Packaging FFI static library..."
+FFI_LIB=$(find "$NAGA_FFI_DIR/target/wasm32-unknown-emscripten/release" -name "libnaga_ffi.a" | head -1)
+if [ -n "$FFI_LIB" ]; then
+    cp "$FFI_LIB" "$PACKAGE_DIR/lib/libnaga_ffi.a"
+    echo "Library size: $(du -h "$PACKAGE_DIR/lib/libnaga_ffi.a" | cut -f1)"
+else
+    echo "Warning: libnaga_ffi.a not found — FFI library not packaged"
+fi
+
+# Copy C header
+cp "$NAGA_FFI_DIR/naga_ffi.h" "$PACKAGE_DIR/include/"
+
+# Verify we got the CLI output
 if [ ! -f "$PACKAGE_DIR/bin/naga.wasm" ]; then
     echo "Error: naga.wasm not found in build output"
     ls -la target/wasm32-wasip1/release/ 2>/dev/null || true
     exit 1
 fi
 
-echo "Binary size: $(du -h "$PACKAGE_DIR/bin/naga.wasm" | cut -f1)"
+echo "CLI binary size: $(du -h "$PACKAGE_DIR/bin/naga.wasm" | cut -f1)"
+
+# Clean up cargo config override
+rm -f "$NAGA_FFI_DIR/.cargo/config.toml"
+rmdir "$NAGA_FFI_DIR/.cargo" 2>/dev/null || true
 
 # Copy licenses (wgpu/naga is dual-licensed)
 echo "Packaging licenses..."
