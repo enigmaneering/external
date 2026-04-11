@@ -120,18 +120,23 @@ PACKAGE_DIR="$OUTPUT_DIR/dxc-$PLATFORM"
 mkdir -p "$PACKAGE_DIR/bin"
 
 echo "Packaging DXC WASM..."
-# Emscripten produces a .js loader and .wasm binary
-find bin -name "dxc.js" -exec cp {} "$PACKAGE_DIR/bin/" \; 2>/dev/null || true
-find bin -name "dxc.wasm" -exec cp {} "$PACKAGE_DIR/bin/" \; 2>/dev/null || true
+# Emscripten produces a .js loader and .wasm binary.
+# LLVM's build system may append a version suffix (e.g. dxc.js-3.7 + dxc.js-3.wasm),
+# so we find the actual files by glob and rename them to clean names.
+DXC_JS=$(find bin -name "dxc.js*" -not -name "*.wasm" | head -1)
+DXC_WASM=$(find bin -name "dxc.js*.wasm" -o -name "dxc.wasm" | head -1)
 
-# Verify we got the outputs
-if [ ! -f "$PACKAGE_DIR/bin/dxc.js" ] || [ ! -f "$PACKAGE_DIR/bin/dxc.wasm" ]; then
-    echo "Error: Expected dxc.js and dxc.wasm not found in build output"
+if [ -z "$DXC_JS" ] || [ -z "$DXC_WASM" ]; then
+    echo "Error: DXC WASM build output not found"
     echo "Build output contents:"
     find bin -type f -name "dxc*" 2>/dev/null || echo "  (no dxc files found in bin/)"
     ls -la bin/ 2>/dev/null || true
     exit 1
 fi
+
+cp "$DXC_JS" "$PACKAGE_DIR/bin/dxc.js"
+cp "$DXC_WASM" "$PACKAGE_DIR/bin/dxc.wasm"
+echo "Packaged: $DXC_JS -> dxc.js, $DXC_WASM -> dxc.wasm"
 
 # Copy licenses - preserve structure from source repo
 echo "Packaging licenses..."
