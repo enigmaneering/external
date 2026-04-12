@@ -120,6 +120,23 @@ if [ ! -f "LICENSE" ]; then
 fi
 echo "License file verified (Apache 2.0 with LLVM Exceptions)"
 
+# Find cmake — same fallback strategy as python for MSYS2 compatibility
+CMAKE=$(command -v cmake 2>/dev/null || true)
+if [ -z "$CMAKE" ]; then
+    for p in /ucrt64/bin/cmake.exe /mingw64/bin/cmake.exe; do
+        if [ -x "$p" ]; then
+            CMAKE="$p"
+            break
+        fi
+    done
+fi
+if [ -z "$CMAKE" ]; then
+    echo "Error: cmake not found"
+    echo "PATH=$PATH"
+    exit 1
+fi
+echo "Using cmake: $CMAKE"
+
 # Build clspv
 mkdir -p build
 cd build
@@ -175,7 +192,7 @@ echo "Configuring clspv..."
 #   - Sets LLVM_ENABLE_RUNTIMES="libclc" (OpenCL C standard library)
 #   - Sets LIBCLC_TARGETS_TO_BUILD="clspv--;clspv64--"
 # Do NOT override LLVM_TARGETS_TO_BUILD — libclc build requires a native backend.
-cmake .. \
+$CMAKE .. \
     $CMAKE_GENERATOR \
     $CMAKE_OSX_ARCH_FLAG \
     $CMAKE_SYSTEM_PROCESSOR \
@@ -190,7 +207,7 @@ cmake .. \
     -DLLVM_INCLUDE_BENCHMARKS=OFF
 
 echo "Building clspv (this may take 20-40 minutes)..."
-cmake --build . --config Release --target clspv -j$NCPU
+$CMAKE --build . --config Release --target clspv -j$NCPU
 
 # Package output
 PACKAGE_DIR="$OUTPUT_DIR/clspv-$PLATFORM"
