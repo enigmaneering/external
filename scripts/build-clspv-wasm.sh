@@ -117,7 +117,20 @@ LIBCLC_DIR_ABS="$(cd "$LIBCLC_DIR" && pwd)"
 echo "libclc built successfully: $LIBCLC_DIR_ABS"
 ls -la "$LIBCLC_DIR_ABS"/spir*/libclc.bc
 
+# Copy the .bc files somewhere safe, then delete the entire Phase 1
+# build tree to reclaim disk.  The LLVM source + native build can
+# consume 15+ GB; CI runners only have ~14 GB free.
+LIBCLC_SAVED="$BUILD_DIR/libclc-prebuilt"
+mkdir -p "$LIBCLC_SAVED"
+cp -r "$LIBCLC_DIR_ABS"/* "$LIBCLC_SAVED/"
+echo "Saved libclc .bc files to $LIBCLC_SAVED"
+ls -la "$LIBCLC_SAVED"/spir*/libclc.bc
+
 cd "$BUILD_DIR/clspv-wasm-src"
+echo "Cleaning Phase 1 build to reclaim disk..."
+rm -rf build-native
+echo "Disk after cleanup:"
+df -h . | tail -1
 
 # ================================================================
 #  Phase 2: Build clspv for WebAssembly
@@ -140,7 +153,7 @@ echo "Configuring clspv for WebAssembly..."
 # and build tablegen correctly — "X86" matches the CI host architecture.
 emcmake cmake .. \
     -DCMAKE_BUILD_TYPE=Release \
-    -DCLSPV_EXTERNAL_LIBCLC_DIR="$LIBCLC_DIR_ABS" \
+    -DCLSPV_EXTERNAL_LIBCLC_DIR="$LIBCLC_SAVED" \
     -DLLVM_TARGETS_TO_BUILD="X86" \
     -DLLVM_ENABLE_EH=ON \
     -DLLVM_ENABLE_RTTI=ON \
